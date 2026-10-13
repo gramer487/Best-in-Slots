@@ -11,10 +11,11 @@ _DEFAULTS = {
     "channel_id": None,
     "panel_message_id": None,
     "lfg_message_id": None,
+    "status_message_id": None,  # world state embed (arbitration + SP cascade flag)
     "button_roles": [None, None, None],  # roles behind the 3 self-role buttons
     "ping_roles": [],  # roles LFG posts are allowed to ping
     "admin_role_id": None,  # role allowed to run /setup (in addition to server admins)
-    "threads": {},  # str(thread_id) -> ISO creation timestamp, for the 1h expiry
+    "threads": {},  # str(thread_id) -> {"created": iso, "host": user_id, "delete_at": iso?}
 }
 
 config = copy.deepcopy(_DEFAULTS)

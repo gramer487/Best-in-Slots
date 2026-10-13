@@ -5,15 +5,21 @@ A single-server Discord bot that posts two panels in one channel:
 1. **Self roles** — 3 buttons that toggle roles on/off. Users can pick more than one.
 2. **LFG** — a "Start LFG" button opens an ephemeral form (role to ping, players needed,
    duration, optional note via a modal). Submitting posts the LFG with a role ping and opens
-   a thread. Threads are archived + locked exactly 1 hour after creation.
+   a thread. Threads are archived + locked exactly 1 hour after creation. The thread owner
+   can type `$close` inside their thread to have it deleted after 10 minutes.
+3. **World state** — a third embed below the panels shows the current arbitration (mission,
+   location, tier, reset time) and whether a Steel Path Void Cascade fissure is live.
+   Data comes from browse.wf and the embed refreshes every 5 minutes.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
-in threads.
+in threads. On every restart the bot clears the whole LFG channel and reposts the panels.
 
 ## Setup
 
 1. Create an application at https://discord.com/developers/applications → **Bot** →
-   **Reset Token** and copy the token.
+   **Reset Token** and copy the token. On the same page, under **Privileged Gateway
+   Intents**, turn on **Message Content Intent** — the bot needs it to read `$close`
+   in threads.
 2. Invite the bot with this URL (replace `CLIENT_ID` with your application ID):
    ```
    https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=51808136192&scope=bot%20applications.commands
@@ -65,7 +71,8 @@ on it.
 ## Files
 
 - `main.py` — bot wiring, thread expiry loop, message cleanup, `/setup` command.
-- `views.py` — all UI: role buttons, LFG form + note modal, setup pages.
+- `views.py` — all UI: role buttons, LFG form + note modal, setup pages, status embed.
+- `worldstate.py` — browse.wf world state fetcher (arbitration schedule + fissures).
 - `config.py` — JSON config load/save (`config.json`).
 - `config.json` — created on first save; holds channel/message/role IDs and thread
   timestamps. Managed by the bot and git-ignored: after a fresh clone it doesn't exist,

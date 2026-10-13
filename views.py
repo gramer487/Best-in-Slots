@@ -10,6 +10,9 @@ from config import config, save
 
 PANEL_INTRO = "Pick a role to ping, how many players you need and for how long — then hit **Post LFG**.\n\n"
 
+# Hardcoded per-role player limits: this role allows up to 5, everything else 3.
+FIVE_PLAYER_ROLE_ID = 1559600840950423632
+
 
 def _summary(role, count, duration, note) -> str:
     return (
@@ -23,11 +26,13 @@ def _summary(role, count, duration, note) -> str:
 class RolePanelView(discord.ui.View):
     """Embed 1: three buttons that toggle self-assignable roles."""
 
-    def __init__(self, guild: discord.Guild):
+    def __init__(self, guild: discord.Guild, roles: list[discord.Role | None] | None = None):
         super().__init__(timeout=None)
+        if roles is None:
+            roles = [guild.get_role(rid) if rid else None for rid in config["button_roles"]]
         for i in range(3):
             button = self.children[i]
-            role = guild.get_role(config["button_roles"][i]) if config["button_roles"][i] else None
+            role = roles[i]
             if role is None:
                 button.label = "—"
                 button.disabled = True
@@ -71,6 +76,9 @@ class RolePanelView(discord.ui.View):
 class LfgPanelView(discord.ui.View):
     """Embed 2: button that opens the ephemeral LFG form."""
 
+    def __init__(self):
+        super().__init__(timeout=None)
+
     @discord.ui.button(label="Start LFG", style=discord.ButtonStyle.green, emoji="🔎", custom_id="start_lfg")
     async def start_lfg(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         roles = [r for rid in config["ping_roles"] if (r := interaction.guild.get_role(rid))]
@@ -82,6 +90,65 @@ class LfgPanelView(discord.ui.View):
             return
         view = LfgSetupView(roles)
         await interaction.response.send_message(PANEL_INTRO + view.summary(), view=view, ephemeral=True)
+
+
+async def post_panels(channel, guild, button_roles=None):
+    """Post the self-role and LFG panels in the channel. Returns (role_message, lfg_message)."""
+    role_message = await channel.send(
+        embed=discord.Embed(
+            title="Self roles",
+            description="Select or remove the role(s) that you want to be pinged in LFG posts.",
+            color=discord.Color.blurple(),
+        ),
+        view=RolePanelView(guild, button_roles),
+    )
+    lfg_message = await channel.send(
+        embed=discord.Embed(
+            title="Looking for Group",
+            description=(
+                "Click **Start LFG** below to open a form.\n"
+                "Your post will ping a role, open a thread and the thread expires after 1 hour."
+            ),
+            color=discord.Color.green(),
+        ),
+        view=LfgPanelView(),
+    )
+    return role_message, lfg_message
+
+
+def build_status_embed(data: dict) -> discord.Embed:
+    """Embed 3: current arbitration and the Steel Path Void Cascade flag."""
+    embed = discord.Embed(title="World state", color=discord.Color.orange())
+    arbitration = data["arbitration"]
+    if arbitration:
+        tier = f" ({arbitration['tier']} Tier)" if arbitration["tier"] != "?" else ""
+        resets = int(arbitration["rotates_at"].timestamp())
+        embed.add_field(
+            name="Arbitration",
+            value=(
+                f"**{arbitration['name']}** ({arbitration['system']}) — "
+                f"{arbitration['mission']}{tier}\n"
+                f"Resets <t:{resets}:F> (<t:{resets}:R>)"
+            ),
+            inline=True,
+        )
+    else:
+        embed.add_field(name="Arbitration", value="❌ No data", inline=True)
+    sp = data["sp_cascade"]
+    if sp:
+        expires = int(sp["expiry"].timestamp())
+        embed.add_field(
+            name="SP Void Cascade",
+            value=(
+                f"✅ True — {sp['tier']} · **{sp['name']}** ({sp['system']})\n"
+                f"Expires <t:{expires}:F> (<t:{expires}:R>)"
+            ),
+            inline=True,
+        )
+    else:
+        embed.add_field(name="SP Void Cascade", value="❌ False", inline=True)
+    embed.set_footer(text="browse.wf")
+    return embed
 
 
 class LfgSetupView(discord.ui.View):
@@ -104,10 +171,7 @@ class LfgSetupView(discord.ui.View):
 
         self.count_select = discord.ui.Select(
             placeholder="How many players do you need?",
-            options=[
-                discord.SelectOption(label=f"{n} player{'s' if n != 1 else ''}", value=str(n))
-                for n in range(1, 11)
-            ],
+            options=self._count_options(),
             row=1,
         )
         self.count_select.callback = self.on_count
@@ -130,8 +194,18 @@ class LfgSetupView(discord.ui.View):
     def summary(self) -> str:
         return _summary(self.role, self.count, self.duration, self.note)
 
+    def _count_options(self) -> list[discord.SelectOption]:
+        max_players = 5 if self.role is not None and self.role.id == FIVE_PLAYER_ROLE_ID else 3
+        return [
+            discord.SelectOption(label=f"{n} player{'s' if n != 1 else ''}", value=str(n))
+            for n in range(1, max_players + 1)
+        ]
+
     async def on_role(self, interaction: discord.Interaction) -> None:
         self.role = interaction.guild.get_role(int(self.role_select.values[0]))
+        # The player limit depends on the role — rebuild the options and clear the old count.
+        self.count_select.options = self._count_options()
+        self.count = None
         await self._refresh(interaction)
 
     async def on_count(self, interaction: discord.Interaction) -> None:
@@ -143,12 +217,14 @@ class LfgSetupView(discord.ui.View):
         await self._refresh(interaction)
 
     async def _refresh(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer()
-        await interaction.message.edit(content=PANEL_INTRO + self.summary())
+        # Ephemeral messages can only be edited through the interaction response —
+        # plain Message.edit would 404. The view rides along so rebuilt select
+        # options (per-role player limit) show up.
+        await interaction.response.edit_message(content=PANEL_INTRO + self.summary(), view=self)
 
     @discord.ui.button(label="Add a note", style=discord.ButtonStyle.grey, emoji="📝", row=3)
     async def add_note(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.send_modal(NoteModal(view=self, message=interaction.message))
+        await interaction.response.send_modal(NoteModal(view=self))
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, row=3)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -168,31 +244,51 @@ class LfgSetupView(discord.ui.View):
                 "The LFG channel isn't configured. Ask an admin to run `/setup`.", ephemeral=True
             )
             return
+        created = dt.datetime.now(dt.timezone.utc)
+        expires = created + dt.timedelta(hours=1)
         embed = discord.Embed(title=f"LFG — {self.role.name}", color=discord.Color.green())
         embed.add_field(name="Role", value=self.role.mention, inline=True)
         embed.add_field(name="Players needed", value=str(self.count), inline=True)
         embed.add_field(name="Duration", value=self.duration, inline=True)
+        # A mention renders as a clickable @name without pinging.
+        embed.add_field(name="Host", value=interaction.user.mention, inline=True)
         if self.note:
             embed.add_field(name="Note", value=self.note, inline=False)
-        embed.set_footer(text=f"Hosted by {interaction.user.display_name}")
+        # Discord timestamps render in each viewer's local timezone.
+        embed.add_field(
+            name="Thread expires",
+            value=f"<t:{int(expires.timestamp())}:F> (<t:{int(expires.timestamp())}:R>)",
+            inline=False,
+        )
         try:
             message = await channel.send(
                 content=self.role.mention,
                 embed=embed,
                 allowed_mentions=discord.AllowedMentions(roles=[self.role]),
             )
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "I don't have permission to post in the LFG channel.", ephemeral=True
+            )
+            return
+        try:
             thread = await message.create_thread(
                 name=f"LFG — {self.role.name} ({self.count} needed)"[:100],
                 auto_archive_duration=60,
             )
-        except discord.Forbidden:
+        except discord.HTTPException as e:
+            # Surface the real reason (e.g. thread rate limits) instead of a silent failure.
             await interaction.response.send_message(
-                "I don't have permission to post or create threads in the LFG channel.", ephemeral=True
+                f"Posted the LFG, but opening a thread failed: {e}", ephemeral=True
             )
             return
-        config["threads"][str(thread.id)] = dt.datetime.now(dt.timezone.utc).isoformat()
+        config["threads"][str(thread.id)] = {
+            "created": created.isoformat(),
+            "host": interaction.user.id,  # only they may use $close
+        }
         save()
-        self.disable_all_items()
+        self.clear_items()
+        self.stop()
         await interaction.response.edit_message(content=f"✅ Posted! {thread.jump_url}", view=self)
 
 
@@ -205,16 +301,15 @@ class NoteModal(discord.ui.Modal, title="LFG note"):
         required=False,
     )
 
-    def __init__(self, view: LfgSetupView, message: discord.Message):
+    def __init__(self, view: LfgSetupView):
         super().__init__()
         self.parent_view = view
-        self.parent_message = message
         self.note.default = view.note or ""
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         self.parent_view.note = str(self.note.value).strip() or None
-        await interaction.response.defer()
-        await self.parent_message.edit(content=PANEL_INTRO + self.parent_view.summary())
+        # Ephemeral messages can only be edited through the interaction response.
+        await interaction.response.edit_message(content=PANEL_INTRO + self.parent_view.summary())
 
 
 class SetupState:
@@ -230,20 +325,30 @@ class SetupChannelView(discord.ui.View):
     def __init__(self, state: SetupState, guild: discord.Guild):
         super().__init__(timeout=300)
         self.state = state
+        channel_default = (
+            [guild.get_channel(config["channel_id"])]
+            if config["channel_id"] and guild.get_channel(config["channel_id"])
+            else []
+        )
         self.channel_select = discord.ui.ChannelSelect(
             placeholder="LFG channel",
             channel_types=[discord.ChannelType.text],
             min_values=1,
             max_values=1,
             row=0,
+            default_values=channel_default,
         )
+        self.channel_select.callback = self._ack
         self.add_item(self.channel_select)
+        roles_default = [guild.get_role(rid) for rid in config["ping_roles"] if guild.get_role(rid)]
         self.roles_select = discord.ui.RoleSelect(
             placeholder="Roles that can be pinged in LFG posts",
             min_values=1,
             max_values=25,
             row=1,
+            default_values=roles_default,
         )
+        self.roles_select.callback = self._ack
         self.add_item(self.roles_select)
         admin_default = (
             [guild.get_role(config["admin_role_id"])]
@@ -257,13 +362,28 @@ class SetupChannelView(discord.ui.View):
             row=2,
             default_values=admin_default,
         )
+        self.admin_select.callback = self._ack
         self.add_item(self.admin_select)
+
+    async def _ack(self, interaction: discord.Interaction) -> None:
+        # These selects are only read when "Next" is pressed — just acknowledge the pick.
+        await interaction.response.defer()
 
     @discord.ui.button(label="Next →", style=discord.ButtonStyle.blurple, row=3)
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        self.state.channel = self.channel_select.values[0]
-        self.state.ping_roles = self.roles_select.values
-        self.state.admin_role = self.admin_select.values[0] if self.admin_select.values else None
+        # Untouched selects return empty values — fall back to the shown defaults.
+        channels = self.channel_select.values or self.channel_select.default_values
+        roles = self.roles_select.values or self.roles_select.default_values
+        if not channels or not roles:
+            await interaction.response.send_message(
+                "Pick the LFG channel and at least one pingable role first.", ephemeral=True
+            )
+            return
+        # ChannelSelect.values gives a partial channel — resolve it to the real object.
+        self.state.channel = interaction.guild.get_channel(channels[0].id)
+        self.state.ping_roles = roles
+        admin = self.admin_select.values or self.admin_select.default_values
+        self.state.admin_role = admin[0] if admin else None
         await interaction.response.edit_message(
             content="**LFG setup** — page 2: pick the roles for the three self-role buttons.",
             view=SetupRolesView(self.state, interaction.guild),
@@ -287,8 +407,13 @@ class SetupRolesView(discord.ui.View):
                 row=i,
                 default_values=default,
             )
+            select.callback = self._ack
             self.role_selects.append(select)
             self.add_item(select)
+
+    async def _ack(self, interaction: discord.Interaction) -> None:
+        # These selects are only read when "Save & post panels" is pressed.
+        await interaction.response.defer()
 
     @discord.ui.button(label="← Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -305,26 +430,17 @@ class SetupRolesView(discord.ui.View):
             )
             return
         guild = interaction.guild
+        # Untouched selects return empty values — fall back to the shown defaults.
+        button_roles = []
+        for select in self.role_selects:
+            if select.values:
+                button_roles.append(guild.get_role(select.values[0].id))
+            elif select.default_values:
+                button_roles.append(guild.get_role(select.default_values[0].id))
+            else:
+                button_roles.append(None)
         try:
-            role_message = await self.state.channel.send(
-                embed=discord.Embed(
-                    title="Self roles",
-                    description="Click a button to add or remove a role. You can pick as many as you want.",
-                    color=discord.Color.blurple(),
-                ),
-                view=RolePanelView(guild),
-            )
-            lfg_message = await self.state.channel.send(
-                embed=discord.Embed(
-                    title="Looking for Group",
-                    description=(
-                        "Click **Start LFG** below to open a form.\n"
-                        "Your post will ping a role, open a thread and the thread expires after 1 hour."
-                    ),
-                    color=discord.Color.green(),
-                ),
-                view=LfgPanelView(),
-            )
+            role_message, lfg_message = await post_panels(self.state.channel, guild, button_roles)
         except discord.Forbidden:
             await interaction.response.send_message(
                 "I can't post in that channel. Check my Send Messages permission there.", ephemeral=True
@@ -347,9 +463,7 @@ class SetupRolesView(discord.ui.View):
         config["channel_id"] = self.state.channel.id
         config["ping_roles"] = [role.id for role in self.state.ping_roles]
         config["admin_role_id"] = self.state.admin_role.id if self.state.admin_role else None
-        config["button_roles"] = [
-            select.values[0].id if select.values else None for select in self.role_selects
-        ]
+        config["button_roles"] = [role.id if role else None for role in button_roles]
         config["panel_message_id"] = role_message.id
         config["lfg_message_id"] = lfg_message.id
         save()
