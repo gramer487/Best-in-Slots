@@ -13,6 +13,7 @@ _DEFAULTS = {
     "lfg_message_id": None,
     "button_roles": [None, None, None],  # roles behind the 3 self-role buttons
     "ping_roles": [],  # roles LFG posts are allowed to ping
+    "admin_role_id": None,  # role allowed to run /setup (in addition to server admins)
     "threads": {},  # str(thread_id) -> ISO creation timestamp, for the 1h expiry
 }
 

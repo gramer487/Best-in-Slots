@@ -84,14 +84,20 @@ async def on_message(message: discord.Message):
 
 @bot.tree.command(name="setup", description="Open the LFG bot setup panel")
 async def setup(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator:
+    admin_role = (
+        interaction.guild.get_role(config["admin_role_id"]) if config["admin_role_id"] else None
+    )
+    is_admin = interaction.user.guild_permissions.administrator
+    has_admin_role = admin_role is not None and admin_role in interaction.user.roles
+    if not is_admin and not has_admin_role:
         await interaction.response.send_message(
-            "You need the Administrator permission to use this.", ephemeral=True
+            "You need the Administrator permission or the configured admin role to use this.",
+            ephemeral=True,
         )
         return
     await interaction.response.send_message(
-        "**LFG setup** — page 1: pick the LFG channel and the roles LFG posts may ping.",
-        view=SetupChannelView(SetupState()),
+        "**LFG setup** — page 1: LFG channel, pingable roles and the admin role.",
+        view=SetupChannelView(SetupState(), interaction.guild),
         ephemeral=True,
     )
 

@@ -221,12 +221,13 @@ class SetupState:
     def __init__(self):
         self.channel: discord.TextChannel | None = None
         self.ping_roles: list[discord.Role] = []
+        self.admin_role: discord.Role | None = None
 
 
 class SetupChannelView(discord.ui.View):
-    """Setup page 1: LFG channel + pingable roles."""
+    """Setup page 1: LFG channel, pingable roles and the admin role."""
 
-    def __init__(self, state: SetupState):
+    def __init__(self, state: SetupState, guild: discord.Guild):
         super().__init__(timeout=300)
         self.state = state
         self.channel_select = discord.ui.ChannelSelect(
@@ -244,11 +245,25 @@ class SetupChannelView(discord.ui.View):
             row=1,
         )
         self.add_item(self.roles_select)
+        admin_default = (
+            [guild.get_role(config["admin_role_id"])]
+            if config["admin_role_id"] and guild.get_role(config["admin_role_id"])
+            else []
+        )
+        self.admin_select = discord.ui.RoleSelect(
+            placeholder="Admin role for /setup (optional)",
+            min_values=0,
+            max_values=1,
+            row=2,
+            default_values=admin_default,
+        )
+        self.add_item(self.admin_select)
 
-    @discord.ui.button(label="Next →", style=discord.ButtonStyle.blurple, row=2)
+    @discord.ui.button(label="Next →", style=discord.ButtonStyle.blurple, row=3)
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         self.state.channel = self.channel_select.values[0]
         self.state.ping_roles = self.roles_select.values
+        self.state.admin_role = self.admin_select.values[0] if self.admin_select.values else None
         await interaction.response.edit_message(
             content="**LFG setup** — page 2: pick the roles for the three self-role buttons.",
             view=SetupRolesView(self.state, interaction.guild),
@@ -278,8 +293,8 @@ class SetupRolesView(discord.ui.View):
     @discord.ui.button(label="← Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await interaction.response.edit_message(
-            content="**LFG setup** — page 1: pick the LFG channel and the roles LFG posts may ping.",
-            view=SetupChannelView(self.state),
+            content="**LFG setup** — page 1: LFG channel, pingable roles and the admin role.",
+            view=SetupChannelView(self.state, interaction.guild),
         )
 
     @discord.ui.button(label="Save & post panels", style=discord.ButtonStyle.green, row=3)
@@ -331,6 +346,7 @@ class SetupRolesView(discord.ui.View):
         config["guild_id"] = guild.id
         config["channel_id"] = self.state.channel.id
         config["ping_roles"] = [role.id for role in self.state.ping_roles]
+        config["admin_role_id"] = self.state.admin_role.id if self.state.admin_role else None
         config["button_roles"] = [
             select.values[0].id if select.values else None for select in self.role_selects
         ]

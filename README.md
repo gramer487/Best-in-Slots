@@ -18,14 +18,20 @@ in threads.
    ```
    https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=51808136192&scope=bot%20applications.commands
    ```
-3. Install Python 3.8+ and run `pip install -r requirements.txt`.
-4. Put your token in the `.env` file next to `main.py`:
+3. Install Python 3.8+.
+4. Create a virtual environment and install the dependencies:
+   ```
+   python -m venv .venv
+   .venv\Scripts\pip install -r requirements.txt
+   ```
+5. Put your token in the `.env` file next to `main.py`:
    ```
    DISCORD_TOKEN=your-token-here
    ```
-5. Run the bot: `python main.py`
-6. In your server, run `/setup` (Administrator only):
-   - **Page 1:** pick the LFG channel + the roles LFG posts are allowed to ping.
+6. Run the bot: `.venv\Scripts\python main.py`
+7. In your server, run `/setup` (Administrator permission or the configured admin role):
+   - **Page 1:** pick the LFG channel, the roles LFG posts are allowed to ping, and an
+     optional admin role that can run `/setup`.
    - **Page 2:** pick the roles for the three self-role buttons (leave empty to hide a
      button), then **Save & post panels**.
 
@@ -49,7 +55,8 @@ on it.
 - `views.py` — all UI: role buttons, LFG form + note modal, setup pages.
 - `config.py` — JSON config load/save (`config.json`).
 - `config.json` — created on first save; holds channel/message/role IDs and thread
-  timestamps. Managed by the bot.
+  timestamps. Managed by the bot and git-ignored: after a fresh clone it doesn't exist,
+  so run `/setup` and it is recreated.
 
 ## Troubleshooting
 
