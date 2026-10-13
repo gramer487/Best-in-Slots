@@ -19,16 +19,29 @@ in threads.
    https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=51808136192&scope=bot%20applications.commands
    ```
 3. Install Python 3.8+.
-4. Create a virtual environment and install the dependencies:
+4. Create a virtual environment and install the dependencies.
+
+   Windows:
    ```
    python -m venv .venv
    .venv\Scripts\pip install -r requirements.txt
    ```
+   Linux:
+   ```
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+   (On Debian/Ubuntu, if venv creation complains about pip, `sudo apt install python3-venv`
+   first. Note: on Linux the venv has a `bin/` directory, not `Scripts/`.)
 5. Put your token in the `.env` file next to `main.py`:
    ```
    DISCORD_TOKEN=your-token-here
    ```
-6. Run the bot: `.venv\Scripts\python main.py`
+6. Run the bot.
+
+   Windows: `.venv\Scripts\python main.py`
+   Linux (venv activated): `python3 main.py`
 7. In your server, run `/setup` (Administrator permission or the configured admin role):
    - **Page 1:** pick the LFG channel, the roles LFG posts are allowed to ping, and an
      optional admin role that can run `/setup`.

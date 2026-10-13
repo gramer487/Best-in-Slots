@@ -34,11 +34,20 @@ async def on_ready():
             bot.add_view(RolePanelView(guild), message_id=config["panel_message_id"])
         if config["lfg_message_id"]:
             bot.add_view(LfgPanelView(), message_id=config["lfg_message_id"])
-    if bot.guilds:
-        for g in bot.guilds:
-            await bot.tree.sync(guild=g)
-    else:
-        await bot.tree.sync()
+    try:
+        if bot.guilds:
+            for g in bot.guilds:
+                await bot.tree.sync(guild=g)
+        else:
+            await bot.tree.sync()
+        print(
+            f"Synced {len(bot.tree.get_commands())} slash command(s): "
+            f"{[c.name for c in bot.tree.get_commands()]}"
+        )
+    except discord.HTTPException as e:
+        print(f"Command sync failed: {e}")
+        print("The bot was probably invited without the 'applications.commands' scope — "
+              "re-invite it with the URL from the README and restart.")
     if not expire_threads.is_running():
         expire_threads.start()
     print(f"Logged in as {bot.user}")
