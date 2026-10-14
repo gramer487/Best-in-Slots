@@ -5,11 +5,12 @@ A single-server Discord bot that posts two panels in one channel:
 1. **Self roles** — 3 buttons that toggle roles on/off. Users can pick more than one.
 2. **LFG** — a "Start LFG" button opens an ephemeral form (role to ping, players needed,
    duration, optional note via a modal). Submitting posts the LFG with a role ping and opens
-   a thread. Threads are archived + locked exactly 1 hour after creation. The thread owner
+   a thread. Threads are deleted exactly 1 hour after creation. The thread owner
    can type `$close` inside their thread to have it deleted after 10 minutes.
 3. **World state** — a third embed below the panels shows the current arbitration (mission,
    location, tier, reset time) and whether a Steel Path Void Cascade fissure is live.
-   Data comes from browse.wf and the embed refreshes every 5 minutes.
+   Data comes from browse.wf and the embed refreshes the moment the arbitration rotates
+   or a live cascade expires (at least every 10 minutes).
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. On every restart the bot clears the whole LFG channel and reposts the panels.

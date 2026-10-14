@@ -1,5 +1,6 @@
 """LFG bot: self-role panel + LFG posts with threads (1h expiry) in a locked channel."""
 
+import asyncio
 import datetime as dt
 import os
 import traceback
@@ -16,6 +17,7 @@ from worldstate import fetch_worldstate
 intents = discord.Intents.default()
 intents.message_content = True  # needed to read "$close" inside threads
 bot = commands.Bot(command_prefix=None, intents=intents)
+_status_task: asyncio.Task | None = None
 
 
 def get_token() -> str:
@@ -33,23 +35,24 @@ def get_token() -> str:
 @bot.event
 async def on_ready():
     guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
-    if guild:
-        channel = guild.get_channel(config["channel_id"]) if config["channel_id"] else None
-        if channel is not None:
-            # Fresh start: clear the whole channel, then repost the panels.
-            try:
-                await channel.purge(limit=None)
-            except discord.HTTPException:
-                pass
-            try:
-                role_message, lfg_message = await post_panels(channel, guild)
-            except discord.Forbidden:
-                print("Can't post panels in the LFG channel — check the bot's permissions there.")
-            else:
-                config["panel_message_id"] = role_message.id
-                config["lfg_message_id"] = lfg_message.id
-                save()
-            await refresh_status(channel)
+    channel = guild.get_channel(config["channel_id"]) if guild and config["channel_id"] else None
+    if channel is None:
+        print("LFG channel not configured — fill in config.json or run /setup.")
+    else:
+        # Fresh start: clear the whole channel, then repost the panels.
+        try:
+            await channel.purge(limit=None)
+        except discord.HTTPException:
+            pass
+        try:
+            role_message, lfg_message = await post_panels(channel, guild)
+        except discord.Forbidden:
+            print("Can't post panels in the LFG channel — check the bot's permissions there.")
+        else:
+            config["panel_message_id"] = role_message.id
+            config["lfg_message_id"] = lfg_message.id
+            save()
+        await refresh_status(channel)
     try:
         if bot.guilds:
             for g in bot.guilds:
@@ -66,15 +69,16 @@ async def on_ready():
               "re-invite it with the URL from the README and restart.")
     if not expire_threads.is_running():
         expire_threads.start()
-    if not status_loop.is_running():
-        status_loop.start()
+    global _status_task
+    if _status_task is None or _status_task.done():
+        _status_task = bot.loop.create_task(status_task())
     print(f"Logged in as {bot.user} (bot user id: {bot.user.id})")
     print(f"In {len(bot.guilds)} guild(s): {[f'{g.name} ({g.id})' for g in bot.guilds]}")
 
 
 @tasks.loop(minutes=1)
 async def expire_threads():
-    """Archive + lock LFG threads 1 hour after creation; delete $close-requested threads."""
+    """Delete LFG threads 1 hour after creation, or at their scheduled $close time."""
     guild = bot.get_guild(config["guild_id"])
     if guild is None:
         return
@@ -91,41 +95,36 @@ async def expire_threads():
         delete_at = (
             dt.datetime.fromisoformat(entry["delete_at"]) if entry.get("delete_at") else None
         )
-        thread = channel.get_thread(int(thread_id))
-        if delete_at is not None and now >= delete_at:
-            if thread is None:
-                try:
-                    thread = await channel.fetch_thread(int(thread_id))
-                except discord.NotFound:
-                    thread = None
-            if thread is not None:
-                try:
-                    await thread.delete()
-                except discord.HTTPException:
-                    pass
-            del config["threads"][thread_id]
-            changed = True
+        due = (delete_at is not None and now >= delete_at) or now - created >= dt.timedelta(hours=1)
+        if not due:
             continue
-        if thread is not None and not thread.archived and now - created >= dt.timedelta(hours=1):
+        thread = channel.get_thread(int(thread_id))
+        if thread is None:
             try:
-                await thread.edit(archived=True, locked=True)
-            except discord.HTTPException:
+                thread = await channel.fetch_thread(int(thread_id))
+            except discord.NotFound:
+                thread = None
+        if thread is not None:
+            try:
+                await thread.delete()
+            except discord.NotFound:
                 pass
-        if (thread is not None and thread.archived) or now - created >= dt.timedelta(hours=26):
-            del config["threads"][thread_id]
-            changed = True
+            except discord.HTTPException:
+                continue  # transient failure — keep the entry and retry next tick
+        del config["threads"][thread_id]
+        changed = True
     if changed:
         save()
 
 
-async def refresh_status(channel) -> None:
-    """Fetch the world state and post/update the status embed in the LFG channel."""
+async def refresh_status(channel) -> dict | None:
+    """Fetch the world state and post/update the status embed. Returns the data, or None."""
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             data = await fetch_worldstate(session)
     except (aiohttp.ClientError, ValueError) as e:
         print(f"World state fetch failed: {e}")
-        return
+        return None
     message = None
     if config["status_message_id"]:
         try:
@@ -141,17 +140,31 @@ async def refresh_status(channel) -> None:
             await message.edit(embed=build_status_embed(data))
     except discord.HTTPException as e:
         print(f"Status embed update failed: {e}")
+    return data
 
 
-@tasks.loop(minutes=5)
-async def status_loop():
-    guild = bot.get_guild(config["guild_id"])
-    if guild is None:
-        return
-    channel = guild.get_channel(config["channel_id"])
-    if channel is None:
-        return
-    await refresh_status(channel)
+async def status_task():
+    """Refresh the status embed, then sleep until the next arbitration/cascade change."""
+    while not bot.is_closed():
+        guild = bot.get_guild(config["guild_id"])
+        channel = guild.get_channel(config["channel_id"]) if guild else None
+        if channel is None:
+            await asyncio.sleep(60)  # not configured yet
+            continue
+        data = await refresh_status(channel)
+        if data is None:
+            await asyncio.sleep(60)  # fetch failed — retry soon
+            continue
+        # Wake just after the earliest expiry: the arbitration rolls over hourly and
+        # the cascade flag flips when its mission expires. The 10-minute cap catches
+        # cascades that appear while none is live.
+        now = dt.datetime.now(dt.timezone.utc)
+        wake_at = now + dt.timedelta(minutes=10)
+        if data.get("arbitration"):
+            wake_at = min(wake_at, data["arbitration"]["rotates_at"])
+        if data.get("sp_cascade"):
+            wake_at = min(wake_at, data["sp_cascade"]["expiry"])
+        await asyncio.sleep(max(30, (wake_at - now).total_seconds() + 10))
 
 
 @bot.event
