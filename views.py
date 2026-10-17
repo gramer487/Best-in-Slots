@@ -128,7 +128,7 @@ def build_status_embed(data: dict) -> discord.Embed:
             value=(
                 f"**{arbitration['name']}** ({arbitration['system']}) — "
                 f"{arbitration['mission']}{tier}\n"
-                f"Resets <t:{resets}:F> (<t:{resets}:R>)"
+                f"Resets (<t:{resets}:R>)"
             ),
             inline=True,
         )
@@ -141,7 +141,7 @@ def build_status_embed(data: dict) -> discord.Embed:
             name="SP Void Cascade",
             value=(
                 f"✅ True — {sp['tier']} · **{sp['name']}** ({sp['system']})\n"
-                f"Expires <t:{expires}:F> (<t:{expires}:R>)"
+                f"Expires  (<t:{expires}:R>)"
             ),
             inline=True,
         )

@@ -101,7 +101,9 @@ async def expire_threads():
         thread = channel.get_thread(int(thread_id))
         if thread is None:
             try:
-                thread = await channel.fetch_thread(int(thread_id))
+                # guild.fetch_channel also resolves threads; channel.fetch_thread is not
+                # available on older discord.py versions.
+                thread = await guild.fetch_channel(int(thread_id))
             except discord.NotFound:
                 thread = None
         if thread is not None:
