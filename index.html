@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Best in Slots</title>
+<style>
+  :root {
+    --bg: #0f0f14;
+    --text: #e8e8f0;
+    --muted: #9a9ab0;
+    --accent: #5865f2;
+    --accent-hover: #4752c4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    text-align: center;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 3rem;
+    margin: 0 0 12px;
+  }
+  p {
+    color: var(--muted);
+    margin: 0 0 40px;
+    font-size: 1.1rem;
+  }
+  .btn {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 16px 40px;
+    border-radius: 12px;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+  }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Best in Slots</h1>
+    <p>Your tagline goes here.</p>
+    <a class="btn" href="https://discord.com/invite/bestinslots">Get Invited to the Server</a>
+  </main>
+</body>
+</html>
