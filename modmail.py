@@ -155,36 +155,55 @@ class ModmailPanelView(discord.ui.View):
         custom_id="open_modmail",
     )
     async def open(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await open_modmail(interaction)
+        # Ask first so a stray click doesn't open a mail.
+        await interaction.response.send_message(
+            "Do you want to open a modmail with the staff team?",
+            view=ModmailConfirmView(),
+            ephemeral=True,
+        )
 
 
-async def open_modmail(interaction: discord.Interaction) -> None:
-    # Channel creation can take a few seconds — acknowledge before doing the work.
-    await interaction.response.defer(ephemeral=True)
-    guild = interaction.guild
-    # Guild interactions carry the full Member regardless of the member cache (the bot
-    # doesn't request the members intent, so guild.get_member can return None).
-    member = interaction.user if isinstance(interaction.user, discord.Member) else None
-    if guild is None or member is None:
-        await interaction.followup.send(
-            "You need to be a member of the server to contact the moderators.", ephemeral=True
+class ModmailConfirmView(discord.ui.View):
+    """Confirm/Cancel prompt shown after the panel button is pressed."""
+
+    def __init__(self):
+        super().__init__(timeout=300)
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, emoji="✅")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        # Channel creation can take a few seconds — acknowledge before doing the work.
+        await interaction.response.defer()
+        guild = interaction.guild
+        # Guild interactions carry the full Member regardless of the member cache.
+        member = interaction.user if isinstance(interaction.user, discord.Member) else None
+        if guild is None or member is None:
+            await interaction.edit_original_response(
+                content="You need to be a member of the server to contact the moderators.",
+                view=None,
+            )
+            return
+        channel, created = await ensure_modmail_channel(guild, member)
+        if channel is None:
+            await interaction.edit_original_response(
+                content="Modmail isn't configured yet. Ask an admin to run `/setup`.",
+                view=None,
+            )
+            return
+        if created:
+            await _announce_new_channel(channel, member)
+        try:
+            await member.send(_CONFIRM_DM)
+        except discord.HTTPException:
+            pass
+        await interaction.edit_original_response(
+            content="✅ A moderator will be with you shortly — check your DMs.", view=None
         )
-        return
-    channel, created = await ensure_modmail_channel(guild, member)
-    if channel is None:
-        await interaction.followup.send(
-            "Modmail isn't configured yet. Ask an admin to run `/setup`.", ephemeral=True
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(
+            content="No problem — nothing was opened.", view=None
         )
-        return
-    if created:
-        await _announce_new_channel(channel, member)
-    await interaction.followup.send(
-        "✅ A moderator will be with you shortly — check your DMs.", ephemeral=True
-    )
-    try:
-        await member.send(_CONFIRM_DM)
-    except discord.HTTPException:
-        pass
 
 
 async def handle_dm(message: discord.Message, guild: discord.Guild | None) -> None:
@@ -280,6 +299,11 @@ async def handle_staff(message: discord.Message) -> None:
     if not reply:
         return
     target = message.guild.get_member(int(user_id))
+    if target is None:
+        try:
+            target = await message.guild.fetch_member(int(user_id))
+        except discord.HTTPException:
+            target = None
     embed = _reply_embed(message.author.name, reply)
     delivered = False
     if target is not None:
@@ -290,7 +314,9 @@ async def handle_staff(message: discord.Message) -> None:
             pass
     await message.channel.send(embed=embed)
     if not delivered:
-        await message.channel.send("⚠️ Couldn't DM the user — they may have DMs closed.")
+        await message.channel.send(
+            "⚠️ Couldn't DM the user — they may have DMs closed or left the server."
+        )
     try:
         await message.delete()  # keep the channel clean — the embed is the record
     except discord.HTTPException:
@@ -323,6 +349,11 @@ def _chunks(text: str, size: int = 1900) -> list[str]:
 async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
     guild = channel.guild
     member = guild.get_member(int(user_id))
+    if member is None:
+        try:
+            member = await guild.fetch_member(int(user_id))
+        except discord.HTTPException:
+            member = None
     user_name = member.name if member is not None else channel.name
     transcript = await _build_transcript(channel)
 

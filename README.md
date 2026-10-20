@@ -30,8 +30,9 @@ panel channel (optional), roles pinged for new modmail, the moderator role, and 
 
 1. Create an application at https://discord.com/developers/applications → **Bot** →
    **Reset Token** and copy the token. On the same page, under **Privileged Gateway
-   Intents**, turn on **Message Content Intent** — the bot needs it to read `$close`
-   in threads.
+   Intents**, turn on **Message Content Intent** (the bot needs it to read `$close`
+   in threads and `&reply`/`&close` in modmail) and **Server Members Intent** (needed
+   for modmail member lookups).
 2. Invite the bot with this URL (replace `CLIENT_ID` with your application ID):
    ```
    https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=51808136208&scope=bot%20applications.commands

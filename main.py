@@ -18,6 +18,7 @@ from worldstate import fetch_worldstate
 
 intents = discord.Intents.default()
 intents.message_content = True  # needed to read "$close" inside threads
+intents.members = True  # keep the member cache populated for modmail lookups
 bot = commands.Bot(command_prefix=None, intents=intents)
 _status_task: asyncio.Task | None = None
 
