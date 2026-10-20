@@ -162,8 +162,10 @@ async def open_modmail(interaction: discord.Interaction) -> None:
     # Channel creation can take a few seconds — acknowledge before doing the work.
     await interaction.response.defer(ephemeral=True)
     guild = interaction.guild
-    member = guild.get_member(interaction.user.id) if guild else None
-    if member is None:
+    # Guild interactions carry the full Member regardless of the member cache (the bot
+    # doesn't request the members intent, so guild.get_member can return None).
+    member = interaction.user if isinstance(interaction.user, discord.Member) else None
+    if guild is None or member is None:
         await interaction.followup.send(
             "You need to be a member of the server to contact the moderators.", ephemeral=True
         )
@@ -190,6 +192,13 @@ async def handle_dm(message: discord.Message, guild: discord.Guild | None) -> No
     if guild is None:
         return
     member = guild.get_member(message.author.id)
+    if member is None:
+        try:
+            member = await guild.fetch_member(message.author.id)
+        except discord.NotFound:
+            member = None
+        except discord.HTTPException:
+            return  # API hiccup — don't claim they aren't a member
     if member is None:
         try:
             await message.channel.send(
