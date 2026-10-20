@@ -9,6 +9,7 @@ to a forum channel.
 from __future__ import annotations
 
 import datetime as dt
+import io
 import re
 
 import discord
@@ -137,11 +138,6 @@ def _reply_embed(moderator_name: str, text: str) -> discord.Embed:
     )
 
 
-def _message_text(message: discord.Message) -> str:
-    parts = [message.content.strip(), *(a.url for a in message.attachments)]
-    return "\n".join(p for p in parts if p) or "[no text]"
-
-
 class ModmailPanelView(discord.ui.View):
     """Persistent 'contact a moderator' button."""
 
@@ -235,7 +231,27 @@ async def handle_dm(message: discord.Message, guild: discord.Guild | None) -> No
         return
     if created:
         await _announce_new_channel(channel, member)
-    await channel.send(embed=_user_embed(member, _message_text(message)))
+    text = message.content.strip()
+    files: list[discord.File] = []
+    fallback: list[str] = []
+    for attachment in message.attachments:
+        if attachment.size > guild.filesize_limit:
+            fallback.append(attachment.url)
+            continue
+        try:
+            files.append(await attachment.to_file())
+        except discord.HTTPException:
+            fallback.append(attachment.url)
+    if fallback:
+        text = "\n".join([text or "[attachment]", *fallback])
+    elif not text and not files:
+        text = "[no text]"
+    try:
+        await channel.send(embed=_user_embed(member, text), files=files)
+    except discord.HTTPException:
+        # Copying the files failed (e.g. upload too large) — keep the message as links.
+        links = "\n".join(a.url for a in message.attachments)
+        await channel.send(embed=_user_embed(member, "\n".join(filter(None, [text, links]))))
     if created:
         try:
             await message.channel.send(_CONFIRM_DM)
@@ -323,27 +339,73 @@ async def handle_staff(message: discord.Message) -> None:
         pass
 
 
-async def _build_transcript(channel: discord.TextChannel) -> str:
-    lines = []
+async def _build_transcript(channel: discord.TextChannel) -> list:
+    """Transcript items in order: text lines (str) and ("author", Attachment) file entries."""
+    items: list = []
     async for msg in channel.history(limit=1000, oldest_first=True):
         if msg.author.bot and msg.embeds:
             embed = msg.embeds[0]
             title = embed.title or ""
             text = embed.description or ""
             if title.startswith("From "):
-                lines.append(f"{title[5:]}: {text}")
+                author = title[5:]
+                if text:
+                    items.append(f"{author}: {text}")
+                items.extend((author, a) for a in msg.attachments)
             elif title.startswith(REPLY_PREFIX):
-                lines.append(f"{title[len(REPLY_PREFIX):]}: {text}")
+                items.append(f"{title[len(REPLY_PREFIX):]}: {text}")
         elif not msg.author.bot:
             content = msg.content.strip()
             if content.startswith("&"):  # staff commands, already echoed as embeds
                 continue
-            lines.append(f"{msg.author.name}: {content}")
-    return "\n".join(lines) or "(no messages)"
+            items.append(f"{msg.author.name}: {content}")
+    return items or ["(no messages)"]
 
 
-def _chunks(text: str, size: int = 1900) -> list[str]:
-    return [text[i : i + size] for i in range(0, len(text), size)] or ["(no messages)"]
+def _transcript_parts(items: list) -> list[tuple[str, list[discord.Attachment]]]:
+    """Group transcript items into message-sized parts: (text, attachments)."""
+    parts: list[tuple[str, list[discord.Attachment]]] = []
+    buffer = ""
+    for item in items:
+        if isinstance(item, str):
+            if len(buffer) + len(item) + 1 > 1900 and buffer:
+                parts.append((buffer, []))
+                buffer = ""
+            buffer = f"{buffer}\n{item}" if buffer else item
+        else:
+            author, attachment = item
+            if buffer:
+                parts.append((buffer, []))
+                buffer = ""
+            parts.append((f"📎 From {author}:", [attachment]))
+    if buffer:
+        parts.append((buffer, []))
+    return parts or [("(no messages)", [])]
+
+
+async def _transcript_files(
+    attachments: list[discord.Attachment], limit: int
+) -> tuple[list[discord.File], list[str]]:
+    """Download stored attachments for re-upload; note any that can't be copied."""
+    files: list[discord.File] = []
+    notes: list[str] = []
+    for attachment in attachments:
+        if attachment.size > limit:
+            notes.append(f"⚠️ {attachment.filename} is too large to copy into the transcript.")
+            continue
+        try:
+            data = await attachment.read()
+        except discord.HTTPException:
+            notes.append(f"⚠️ Couldn't copy {attachment.filename} into the transcript.")
+            continue
+        files.append(
+            discord.File(
+                io.BytesIO(data),
+                filename=attachment.filename,
+                spoiler=attachment.is_spoiler(),
+            )
+        )
+    return files, notes
 
 
 async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
@@ -355,7 +417,7 @@ async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
         except discord.HTTPException:
             member = None
     user_name = member.name if member is not None else channel.name
-    transcript = await _build_transcript(channel)
+    items = await _build_transcript(channel)
 
     forum = (
         guild.get_channel(config["modmail_log_channel_id"])
@@ -363,12 +425,17 @@ async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
         else None
     )
     if isinstance(forum, discord.ForumChannel):
-        chunks = _chunks(transcript)
+        parts = _transcript_parts(items)
         title = f"{user_name} — {dt.datetime.now():%Y-%m-%d}"
         try:
+            content, attachments = parts[0]
+            files, notes = await _transcript_files(attachments, guild.filesize_limit)
+            if notes:
+                content = "\n".join([content, *notes])
             thread = await forum.create_thread(
                 name=title[:100],
-                content=chunks[0],
+                content=content,
+                files=files,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
             # Link this transcript from the user's next modmail info card.
@@ -376,8 +443,15 @@ async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
                 {"thread": thread.thread.id, "title": title}
             )
             save()
-            for chunk in chunks[1:]:
-                await thread.thread.send(chunk, allowed_mentions=discord.AllowedMentions.none())
+            for content, attachments in parts[1:]:
+                files, notes = await _transcript_files(attachments, guild.filesize_limit)
+                if notes:
+                    content = "\n".join([content, *notes])
+                await thread.thread.send(
+                    content=content,
+                    files=files,
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
         except discord.HTTPException as e:
             # Keep the channel so the conversation isn't lost when logging fails.
             await channel.send(f"⚠️ Couldn't save the transcript to the log forum: {e}")

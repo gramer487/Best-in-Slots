@@ -20,7 +20,9 @@ in threads. On every restart the bot clears the whole LFG channel and reposts th
 Members contact staff with the panel button or by DMing the bot directly. Each user gets a
 private channel in a category only the moderator role can see; its first message is an info
 card with the user's ID, join date, account age, top 15 roles and links to their past
-transcripts. Every message they send the bot is relayed there as an embed. Moderators reply with `&reply <message>` (or `&r <message>`)
+transcripts. Every message they send the bot is relayed there as an embed; attachments
+(screenshots etc.) are copied along with it and re-uploaded into the transcript thread.
+Moderators reply with `&reply <message>` (or `&r <message>`)
 and close the conversation with `&close` or the **Close** button, which posts a transcript
 (usernames only, no pings) to the configured log forum and deletes the channel. Setup fields:
 panel channel (optional), roles pinged for new modmail, the moderator role, and the log forum
@@ -35,7 +37,7 @@ panel channel (optional), roles pinged for new modmail, the moderator role, and 
    for modmail member lookups).
 2. Invite the bot with this URL (replace `CLIENT_ID` with your application ID):
    ```
-   https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=51808136208&scope=bot%20applications.commands
+   https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=326686075920&scope=bot%20applications.commands
    ```
 3. Install Python 3.8+.
 4. Create a virtual environment and install the dependencies.
