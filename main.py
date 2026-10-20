@@ -10,8 +10,10 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
+import modmail
 from config import config, save
-from views import SetupChannelView, SetupState, build_status_embed, post_panels
+from modmail import ModmailCloseView, ModmailPanelView
+from views import SetupMenuView, build_status_embed, post_panels
 from worldstate import fetch_worldstate
 
 intents = discord.Intents.default()
@@ -34,6 +36,9 @@ def get_token() -> str:
 
 @bot.event
 async def on_ready():
+    # Persistent views must be registered after every restart or their buttons die.
+    bot.add_view(ModmailPanelView())
+    bot.add_view(ModmailCloseView())
     guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
     channel = guild.get_channel(config["channel_id"]) if guild and config["channel_id"] else None
     if channel is None:
@@ -171,8 +176,11 @@ async def status_task():
 
 @bot.event
 async def on_message(message: discord.Message):
-    """Channel lockdown and the $close command inside LFG threads."""
-    if message.author.bot or message.guild is None:
+    """DM modmail, channel lockdown and the $close command inside LFG threads."""
+    if message.author.bot:
+        return
+    if message.guild is None:
+        await modmail.handle_dm(message, bot.get_guild(config["guild_id"]))
         return
     if message.channel.id == config["channel_id"] and isinstance(message.channel, discord.TextChannel):
         # The LFG channel only hosts the bot's panels and posts — delete everything else.
@@ -200,9 +208,12 @@ async def on_message(message: discord.Message):
         config["threads"][thread_id] = entry
         save()
         await message.channel.send("🗑️ This thread will be deleted in 10 minutes.")
+        return
+    if str(message.channel.id) in {str(cid) for cid in config["modmails"].values()}:
+        await modmail.handle_staff(message)
 
 
-@bot.tree.command(name="setup", description="Open the LFG bot setup panel")
+@bot.tree.command(name="setup", description="Open the bot setup panel")
 async def setup(interaction: discord.Interaction):
     admin_role = (
         interaction.guild.get_role(config["admin_role_id"]) if config["admin_role_id"] else None
@@ -216,8 +227,8 @@ async def setup(interaction: discord.Interaction):
         )
         return
     await interaction.response.send_message(
-        "**LFG setup** — page 1: LFG channel, pingable roles and the admin role.",
-        view=SetupChannelView(SetupState(), interaction.guild),
+        "**Setup** — what do you want to configure?",
+        view=SetupMenuView(interaction.guild),
         ephemeral=True,
     )
 

@@ -7,6 +7,7 @@ import datetime as dt
 import discord
 
 from config import config, save
+from modmail import ModmailSetupView
 
 PANEL_INTRO = "Pick a role to ping, how many players you need and for how long — then hit **Post LFG**.\n\n"
 
@@ -310,6 +311,28 @@ class NoteModal(discord.ui.Modal, title="LFG note"):
         self.parent_view.note = str(self.note.value).strip() or None
         # Ephemeral messages can only be edited through the interaction response.
         await interaction.response.edit_message(content=PANEL_INTRO + self.parent_view.summary())
+
+
+class SetupMenuView(discord.ui.View):
+    """First /setup page: pick which system to configure."""
+
+    def __init__(self, guild: discord.Guild):
+        super().__init__(timeout=300)
+        self.guild = guild
+
+    @discord.ui.button(label="LFG", style=discord.ButtonStyle.blurple, emoji="🔎", row=0)
+    async def lfg(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(
+            content="**LFG setup** — page 1: LFG channel, pingable roles and the admin role.",
+            view=SetupChannelView(SetupState(), interaction.guild),
+        )
+
+    @discord.ui.button(label="Modmail", style=discord.ButtonStyle.blurple, emoji="📨", row=0)
+    async def modmail(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(
+            content="**Modmail setup** — panel channel, ping roles, moderator role and log forum.",
+            view=ModmailSetupView(interaction.guild),
+        )
 
 
 class SetupState:

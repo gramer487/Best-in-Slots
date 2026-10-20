@@ -16,6 +16,14 @@ _DEFAULTS = {
     "ping_roles": [],  # roles LFG posts are allowed to ping
     "admin_role_id": None,  # role allowed to run /setup (in addition to server admins)
     "threads": {},  # str(thread_id) -> {"created": iso, "host": user_id, "delete_at": iso?}
+    "modmail_embed_channel_id": None,  # where the "contact a moderator" panel is posted
+    "modmail_ping_roles": [],  # roles pinged when a new modmail opens
+    "modmail_mod_role_id": None,  # role that sees the modmail category and can reply
+    "modmail_log_channel_id": None,  # forum channel that receives closed-mail transcripts
+    "modmail_category_id": None,  # staff-only category holding the modmail channels
+    "modmail_panel_message_id": None,
+    "modmails": {},  # str(user_id) -> modmail channel id
+    "modmail_history": {},  # str(user_id) -> [{"thread": forum thread id, "title": ...}]
 }
 
 config = copy.deepcopy(_DEFAULTS)
