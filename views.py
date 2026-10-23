@@ -8,6 +8,7 @@ import discord
 
 from config import config, save
 from modmail import ModmailSetupView
+from suggestions import SuggestionSetupView
 
 PANEL_INTRO = "Pick a role to ping, how many players you need and for how long — then hit **Post LFG**.\n\n"
 
@@ -332,6 +333,13 @@ class SetupMenuView(discord.ui.View):
         await interaction.response.edit_message(
             content="**Modmail setup** — panel channel, ping roles, moderator role and log forum.",
             view=ModmailSetupView(interaction.guild),
+        )
+
+    @discord.ui.button(label="Suggestions", style=discord.ButtonStyle.blurple, emoji="💡", row=0)
+    async def suggestions(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(
+            content="**Suggestion setup** — where suggestion posts go and which role is pinged.",
+            view=SuggestionSetupView(interaction.guild),
         )
 
 

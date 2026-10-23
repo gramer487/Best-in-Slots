@@ -11,6 +11,9 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    location, tier, reset time) and whether a Steel Path Void Cascade fissure is live.
    Data comes from browse.wf and the embed refreshes the moment the arbitration rotates
    or a live cascade expires (at least every 10 minutes).
+4. **Suggestions** — `/suggestion` autocompletes weapon names from `weapons.json` and posts
+   an embed titled with the weapon (plus the optional note) to the configured channel,
+   pinging the configured role. Each weapon can only be suggested once.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. On every restart the bot clears the whole LFG channel and reposts the panels.
@@ -72,6 +75,8 @@ panel channel (optional), roles pinged for new modmail, the moderator role, and 
    - **Modmail:** pick the panel channel (optional), the roles pinged for new modmail, the
      moderator role, and the log forum (optional), then **Save modmail setup**. This creates
      the staff-only **Modmail** category and posts the contact panel.
+   - **Suggestions:** pick the channel that receives suggestion posts and the role to ping,
+     then **Save suggestion setup**.
 
 Re-running the LFG setup deletes the old panels and posts fresh ones.
 
@@ -93,6 +98,8 @@ on it.
 - `views.py` — all UI: role buttons, LFG form + note modal, setup pages, status embed.
 - `modmail.py` — modmail panel, category/channel creation, DM relay, `&reply`/`&close`,
   transcript logging.
+- `suggestions.py` — `/suggestion` weapon lookup/autocomplete and its setup page.
+- `weapons.json` — weapon list (display names) used by the `/suggestion` autocomplete.
 - `worldstate.py` — browse.wf world state fetcher (arbitration schedule + fissures).
 - `config.py` — JSON config load/save (`config.json`).
 - `config.json` — created on first save; holds channel/message/role IDs and thread

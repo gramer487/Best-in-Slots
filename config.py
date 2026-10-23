@@ -16,6 +16,9 @@ _DEFAULTS = {
     "ping_roles": [],  # roles LFG posts are allowed to ping
     "admin_role_id": None,  # role allowed to run /setup (in addition to server admins)
     "threads": {},  # str(thread_id) -> {"created": iso, "host": user_id, "delete_at": iso?}
+    "suggestion_channel_id": None,  # channel that receives /suggestion embeds
+    "suggestion_ping_role_id": None,  # role pinged for each suggestion
+    "suggestions": [],  # internal weapon ids already suggested (one per weapon)
     "modmail_embed_channel_id": None,  # where the "contact a moderator" panel is posted
     "modmail_ping_roles": [],  # roles pinged when a new modmail opens
     "modmail_mod_role_id": None,  # role that sees the modmail category and can reply

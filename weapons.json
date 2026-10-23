@@ -1,0 +1,3226 @@
+{
+  "shedu": {
+    "display": "Shedu",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "bubonico": {
+    "display": "Bubonico",
+    "type": "shotgun",
+    "subclass": "auto_burst",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "coda_bubonico": {
+    "display": "Coda Bubonico",
+    "type": "shotgun",
+    "subclass": "auto_burst",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "cernos": {
+    "display": "Cernos",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": [],
+    "variants": [
+      "cernos_prime",
+      "rakta_cernos"
+    ]
+  },
+  "cinta": {
+    "display": "Cinta",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": []
+  },
+  "daikyu": {
+    "display": "Daikyu",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": [],
+    "variants": [
+      "daikyu_prime"
+    ]
+  },
+  "dread": {
+    "display": "Dread",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "evensong": {
+    "display": "Evensong",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": []
+  },
+  "kuva_bramma": {
+    "display": "Kuva Bramma",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": []
+  },
+  "lenz": {
+    "display": "Lenz",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": [],
+    "variants": [
+      "prisma_lenz"
+    ]
+  },
+  "mutalist_cernos": {
+    "display": "Mutalist Cernos",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": []
+  },
+  "nataruk": {
+    "display": "Nataruk",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": [
+      "infinite_ammo"
+    ]
+  },
+  "paris": {
+    "display": "Paris",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "mk1_paris",
+      "paris_prime"
+    ]
+  },
+  "proboscis_cernos": {
+    "display": "Proboscis Cernos",
+    "type": "bow",
+    "subclass": "charge",
+    "flags": []
+  },
+  "attica": {
+    "display": "Attica",
+    "type": "crossbow",
+    "subclass": "auto",
+    "flags": []
+  },
+  "zhuge": {
+    "display": "Zhuge",
+    "type": "crossbow",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "zhuge_prime"
+    ]
+  },
+  "nagantaka": {
+    "display": "Nagantaka",
+    "type": "crossbow",
+    "subclass": "semi_mag_burst",
+    "flags": [],
+    "variants": [
+      "nagantaka_prime"
+    ]
+  },
+  "penta": {
+    "display": "Penta",
+    "type": "launcher",
+    "subclass": "active",
+    "flags": [],
+    "variants": [
+      "carmine_penta",
+      "secura_penta"
+    ]
+  },
+  "tenet_envoy": {
+    "display": "Tenet Envoy",
+    "type": "launcher",
+    "subclass": "auto",
+    "flags": []
+  },
+  "ogris": {
+    "display": "Ogris",
+    "type": "launcher",
+    "subclass": "charge",
+    "flags": []
+  },
+  "kuva_ogris": {
+    "display": "Kuva Ogris",
+    "type": "launcher",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "kuva_tonkor": {
+    "display": "Kuva Tonkor",
+    "type": "launcher",
+    "subclass": "semi_auto",
+    "flags": [
+      "single_shot_mag"
+    ]
+  },
+  "kuva_zarr": {
+    "display": "Kuva Zarr",
+    "type": "launcher",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "tonkor": {
+    "display": "Tonkor",
+    "type": "launcher",
+    "subclass": "semi_auto",
+    "flags": [
+      "single_shot_mag"
+    ]
+  },
+  "torid": {
+    "display": "Torid",
+    "type": "launcher",
+    "subclass": "semi_auto",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "zarr": {
+    "display": "Zarr",
+    "type": "launcher",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "simulor": {
+    "display": "Simulor",
+    "type": "rifle",
+    "subclass": "active",
+    "flags": []
+  },
+  "synoid_simulor": {
+    "display": "Synoid Simulor",
+    "type": "rifle",
+    "subclass": "active",
+    "flags": []
+  },
+  "ax_52": {
+    "display": "AX-52",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": []
+  },
+  "acceltra": {
+    "display": "Acceltra",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "acceltra_prime"
+    ]
+  },
+  "baza": {
+    "display": "Baza",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "baza_prime"
+    ]
+  },
+  "boltor": {
+    "display": "Boltor",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "boltor_prime",
+      "telos_boltor"
+    ]
+  },
+  "braton": {
+    "display": "Braton",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "braton_prime",
+      "braton_vandal",
+      "mk1_braton"
+    ]
+  },
+  "buzlok": {
+    "display": "Buzlok",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": []
+  },
+  "dera": {
+    "display": "Dera",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "dera_vandal"
+    ]
+  },
+  "gotva_prime": {
+    "display": "Gotva Prime",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": []
+  },
+  "grakata": {
+    "display": "Grakata",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "prisma_grakata"
+    ]
+  },
+  "karak": {
+    "display": "Karak",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "karak_wraith"
+    ]
+  },
+  "kuva_karak": {
+    "display": "Kuva Karak",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": []
+  },
+  "reconifex": {
+    "display": "Reconifex",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [
+      "forced_heat_proc"
+    ]
+  },
+  "tenet_flux_rifle": {
+    "display": "Tenet Flux Rifle",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "tetra": {
+    "display": "Tetra",
+    "type": "rifle",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "prisma_tetra"
+    ]
+  },
+  "alternox": {
+    "display": "Alternox",
+    "type": "rifle",
+    "subclass": "auto_active",
+    "flags": [],
+    "variants": [
+      "alternox_prime"
+    ]
+  },
+  "kuva_quartakk": {
+    "display": "Kuva Quartakk",
+    "type": "rifle",
+    "subclass": "auto_burst",
+    "flags": []
+  },
+  "aeolak": {
+    "display": "Aeolak",
+    "type": "rifle",
+    "subclass": "auto_charge",
+    "flags": []
+  },
+  "ambassador": {
+    "display": "Ambassador",
+    "type": "rifle",
+    "subclass": "auto_charge",
+    "flags": []
+  },
+  "efv_5_jupiter": {
+    "display": "EFV-5 Jupiter",
+    "type": "rifle",
+    "subclass": "auto_charge",
+    "flags": []
+  },
+  "quellor": {
+    "display": "Quellor",
+    "type": "rifle",
+    "subclass": "auto_charge",
+    "flags": [
+      "forced_impact_proc"
+    ]
+  },
+  "stahlta": {
+    "display": "Stahlta",
+    "type": "rifle",
+    "subclass": "auto_charge",
+    "flags": []
+  },
+  "basmu": {
+    "display": "Basmu",
+    "type": "rifle",
+    "subclass": "auto_held",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "panthera": {
+    "display": "Panthera",
+    "type": "rifle",
+    "subclass": "auto_held",
+    "flags": [],
+    "variants": [
+      "panthera_prime"
+    ]
+  },
+  "argonak": {
+    "display": "Argonak",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": []
+  },
+  "fulmin": {
+    "display": "Fulmin",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": [
+      "infinite_ammo_battery"
+    ],
+    "variants": [
+      "fulmin_prime"
+    ]
+  },
+  "mutalist_quanta": {
+    "display": "Mutalist Quanta",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": []
+  },
+  "phenmor": {
+    "display": "Phenmor",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": [
+      "incarnon",
+      "devastating_attrition",
+      "wants_negative_cc"
+    ]
+  },
+  "stradavar": {
+    "display": "Stradavar",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": [],
+    "variants": [
+      "stradavar_prime"
+    ]
+  },
+  "tenet_tetra": {
+    "display": "Tenet Tetra",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": []
+  },
+  "trumna": {
+    "display": "Trumna",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": [],
+    "variants": [
+      "trumna_prime"
+    ]
+  },
+  "zenith": {
+    "display": "Zenith",
+    "type": "rifle",
+    "subclass": "auto_semi",
+    "flags": []
+  },
+  "battacor": {
+    "display": "Battacor",
+    "type": "rifle",
+    "subclass": "auto_burst_charge",
+    "flags": []
+  },
+  "gorgon": {
+    "display": "Gorgon",
+    "type": "rifle",
+    "subclass": "auto_spool",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "gorgon_wraith",
+      "prisma_gorgon"
+    ]
+  },
+  "soma": {
+    "display": "Soma",
+    "type": "rifle",
+    "subclass": "auto_spool",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "soma_prime"
+    ]
+  },
+  "supra": {
+    "display": "Supra",
+    "type": "rifle",
+    "subclass": "auto_spool",
+    "flags": [],
+    "variants": [
+      "supra_vandal"
+    ]
+  },
+  "tenora": {
+    "display": "Tenora",
+    "type": "rifle",
+    "subclass": "auto_spool_charge",
+    "flags": [],
+    "variants": [
+      "tenora_prime"
+    ]
+  },
+  "coda_hema": {
+    "display": "Coda Hema",
+    "type": "rifle",
+    "subclass": "burst",
+    "flags": []
+  },
+  "hema": {
+    "display": "Hema",
+    "type": "rifle",
+    "subclass": "burst",
+    "flags": []
+  },
+  "paracyst": {
+    "display": "Paracyst",
+    "type": "rifle",
+    "subclass": "burst",
+    "flags": []
+  },
+  "quartakk": {
+    "display": "Quartakk",
+    "type": "rifle",
+    "subclass": "burst",
+    "flags": []
+  },
+  "sybaris": {
+    "display": "Sybaris",
+    "type": "rifle",
+    "subclass": "burst",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "dex_sybaris",
+      "sybaris_prime"
+    ]
+  },
+  "thornbak": {
+    "display": "Thornbak",
+    "type": "rifle",
+    "subclass": "burst",
+    "flags": []
+  },
+  "tiberon": {
+    "display": "Tiberon",
+    "type": "rifle",
+    "subclass": "burst",
+    "flags": [],
+    "variants": [
+      "tiberon_prime"
+    ]
+  },
+  "burston": {
+    "display": "Burston",
+    "type": "rifle",
+    "subclass": "burst_auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "burston_prime"
+    ]
+  },
+  "higasa": {
+    "display": "Higasa",
+    "type": "rifle",
+    "subclass": "burst_charge",
+    "flags": []
+  },
+  "harpak": {
+    "display": "Harpak",
+    "type": "rifle",
+    "subclass": "burst_semi",
+    "flags": []
+  },
+  "hind": {
+    "display": "Hind",
+    "type": "rifle",
+    "subclass": "burst_semi",
+    "flags": []
+  },
+  "kuva_hind": {
+    "display": "Kuva Hind",
+    "type": "rifle",
+    "subclass": "burst_semi_auto",
+    "flags": []
+  },
+  "miter": {
+    "display": "Miter",
+    "type": "rifle",
+    "subclass": "charge",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "opticor": {
+    "display": "Opticor",
+    "type": "rifle",
+    "subclass": "charge",
+    "flags": [],
+    "variants": [
+      "opticor_vandal"
+    ]
+  },
+  "amprex": {
+    "display": "Amprex",
+    "type": "rifle",
+    "subclass": "held",
+    "flags": []
+  },
+  "coda_synapse": {
+    "display": "Coda Synapse",
+    "type": "rifle",
+    "subclass": "held",
+    "flags": []
+  },
+  "flux_rifle": {
+    "display": "Flux Rifle",
+    "type": "rifle",
+    "subclass": "held",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "glaxion": {
+    "display": "Glaxion",
+    "type": "rifle",
+    "subclass": "held",
+    "flags": [],
+    "variants": [
+      "glaxion_vandal"
+    ]
+  },
+  "ignis": {
+    "display": "Ignis",
+    "type": "rifle",
+    "subclass": "held",
+    "flags": [],
+    "variants": [
+      "ignis_wraith"
+    ]
+  },
+  "synapse": {
+    "display": "Synapse",
+    "type": "rifle",
+    "subclass": "held",
+    "flags": []
+  },
+  "tenet_glaxion": {
+    "display": "Tenet Glaxion",
+    "type": "rifle",
+    "subclass": "held",
+    "flags": []
+  },
+  "enkaus": {
+    "display": "Enkaus",
+    "type": "rifle",
+    "subclass": "held_semi",
+    "flags": []
+  },
+  "quanta": {
+    "display": "Quanta",
+    "type": "rifle",
+    "subclass": "held_semi",
+    "flags": [],
+    "variants": [
+      "quanta_vandal"
+    ]
+  },
+  "tenet_quanta": {
+    "display": "Tenet Quanta",
+    "type": "rifle",
+    "subclass": "held_semi",
+    "flags": []
+  },
+  "grinlok": {
+    "display": "Grinlok",
+    "type": "rifle",
+    "subclass": "semi_auto",
+    "flags": [],
+    "variants": [
+      "prisma_grinlok"
+    ]
+  },
+  "kuva_chakkhurr": {
+    "display": "Kuva Chakkhurr",
+    "type": "rifle",
+    "subclass": "semi_auto",
+    "flags": [
+      "forced_impact_proc"
+    ]
+  },
+  "latron": {
+    "display": "Latron",
+    "type": "rifle",
+    "subclass": "semi_auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "latron_prime",
+      "latron_wraith"
+    ]
+  },
+  "purgator_1": {
+    "display": "Purgator 1",
+    "type": "rifle",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "veldt": {
+    "display": "Veldt",
+    "type": "rifle",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "vinquibus": {
+    "display": "Vinquibus (Primary)",
+    "type": "rifle",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "astilla": {
+    "display": "Astilla",
+    "type": "shotgun",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "astilla_prime"
+    ]
+  },
+  "boar": {
+    "display": "Boar",
+    "type": "shotgun",
+    "subclass": "auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "boar_prime"
+    ]
+  },
+  "kuva_sobek": {
+    "display": "Kuva Sobek",
+    "type": "shotgun",
+    "subclass": "auto",
+    "flags": []
+  },
+  "sobek": {
+    "display": "Sobek",
+    "type": "shotgun",
+    "subclass": "auto",
+    "flags": []
+  },
+  "cedo": {
+    "display": "Cedo",
+    "type": "shotgun",
+    "subclass": "auto_semi",
+    "flags": [],
+    "variants": [
+      "cedo_prime"
+    ]
+  },
+  "felarx": {
+    "display": "Felarx",
+    "type": "shotgun",
+    "subclass": "auto_semi",
+    "flags": [
+      "incarnon",
+      "devastating_attrition",
+      "wants_negative_cc"
+    ]
+  },
+  "kohm": {
+    "display": "Kohm",
+    "type": "shotgun",
+    "subclass": "auto_spool",
+    "flags": []
+  },
+  "kuva_kohm": {
+    "display": "Kuva Kohm",
+    "type": "shotgun",
+    "subclass": "auto_spool",
+    "flags": []
+  },
+  "drakgoon": {
+    "display": "Drakgoon",
+    "type": "shotgun",
+    "subclass": "charge",
+    "flags": []
+  },
+  "kuva_drakgoon": {
+    "display": "Kuva Drakgoon",
+    "type": "shotgun",
+    "subclass": "charge",
+    "flags": []
+  },
+  "tigris": {
+    "display": "Tigris",
+    "type": "shotgun",
+    "subclass": "duplex",
+    "flags": [],
+    "variants": [
+      "sancti_tigris",
+      "tigris_prime"
+    ]
+  },
+  "convectrix": {
+    "display": "Convectrix",
+    "type": "shotgun",
+    "subclass": "held",
+    "flags": []
+  },
+  "phage": {
+    "display": "Phage",
+    "type": "shotgun",
+    "subclass": "held",
+    "flags": []
+  },
+  "phantasma": {
+    "display": "Phantasma",
+    "type": "shotgun",
+    "subclass": "held_charge",
+    "flags": [],
+    "variants": [
+      "phantasma_prime"
+    ]
+  },
+  "arca_plasmor": {
+    "display": "Arca Plasmor",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "coda_bassocyst": {
+    "display": "Coda Bassocyst",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "corinth": {
+    "display": "Corinth",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": [],
+    "variants": [
+      "corinth_prime"
+    ]
+  },
+  "exergis": {
+    "display": "Exergis",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": [
+      "single_shot_mag"
+    ]
+  },
+  "hek": {
+    "display": "Hek",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": [],
+    "variants": [
+      "vaykor_hek"
+    ]
+  },
+  "kuva_hek": {
+    "display": "Kuva Hek",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "rauta": {
+    "display": "Rauta",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "steflos": {
+    "display": "Steflos",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "strun": {
+    "display": "Strun",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "mk1_strun",
+      "strun_prime",
+      "strun_wraith"
+    ]
+  },
+  "tenet_arca_plasmor": {
+    "display": "Tenet Arca Plasmor",
+    "type": "shotgun",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "perigale": {
+    "display": "Perigale",
+    "type": "sniper",
+    "subclass": "burst",
+    "flags": [],
+    "variants": [
+      "perigale_prime"
+    ]
+  },
+  "lanka": {
+    "display": "Lanka",
+    "type": "sniper",
+    "subclass": "charge",
+    "flags": []
+  },
+  "vadarya_prime": {
+    "display": "Vadarya Prime",
+    "type": "sniper",
+    "subclass": "charge",
+    "flags": []
+  },
+  "coda_sporothrix": {
+    "display": "Coda Sporothrix",
+    "type": "sniper",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "komorex": {
+    "display": "Komorex",
+    "type": "sniper",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "rubico": {
+    "display": "Rubico",
+    "type": "sniper",
+    "subclass": "semi_auto",
+    "flags": [],
+    "variants": [
+      "rubico_prime"
+    ]
+  },
+  "snipetron": {
+    "display": "Snipetron",
+    "type": "sniper",
+    "subclass": "semi_auto",
+    "flags": [],
+    "variants": [
+      "snipetron_vandal"
+    ]
+  },
+  "sporothrix": {
+    "display": "Sporothrix",
+    "type": "sniper",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "vectis": {
+    "display": "Vectis",
+    "type": "sniper",
+    "subclass": "semi_auto",
+    "flags": [
+      "single_shot_mag"
+    ],
+    "variants": [
+      "vectis_prime"
+    ]
+  },
+  "vulkar": {
+    "display": "Vulkar",
+    "type": "sniper",
+    "subclass": "semi_auto",
+    "flags": [],
+    "variants": [
+      "vulkar_wraith"
+    ]
+  },
+  "scourge": {
+    "display": "Scourge",
+    "type": "speargun",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "scourge_prime"
+    ]
+  },
+  "javlok": {
+    "display": "Javlok",
+    "type": "speargun",
+    "subclass": "auto_charge",
+    "flags": []
+  },
+  "ferrox": {
+    "display": "Ferrox",
+    "type": "speargun",
+    "subclass": "charge",
+    "flags": []
+  },
+  "tenet_ferrox": {
+    "display": "Tenet Ferrox",
+    "type": "speargun",
+    "subclass": "charged_auto",
+    "flags": []
+  },
+  "afentis": {
+    "display": "Afentis",
+    "type": "speargun",
+    "subclass": "semi_auto",
+    "flags": [],
+    "variants": [
+      "afentis_prime"
+    ]
+  },
+  "ballistica": {
+    "display": "Ballistica",
+    "type": "secondary",
+    "subclass": "burst_charge",
+    "flags": [],
+    "variants": [
+      "rakta_ballistica",
+      "ballistica_prime"
+    ]
+  },
+  "afuris": {
+    "display": "Afuris",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": [],
+    "variants": [
+      "afuris_prime",
+      "dex_furis"
+    ]
+  },
+  "akstiletto": {
+    "display": "Akstiletto",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": [],
+    "variants": [
+      "akstiletto_prime"
+    ]
+  },
+  "akzani": {
+    "display": "Akzani",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": []
+  },
+  "dual_cestra": {
+    "display": "Dual Cestra",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": [],
+    "variants": [
+      "secura_dual_cestra"
+    ]
+  },
+  "dual_coda_torxica": {
+    "display": "Dual Coda Torxica",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": []
+  },
+  "kuva_twin_stubbas": {
+    "display": "Kuva Twin Stubbas",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": []
+  },
+  "prisma_twin_gremlins": {
+    "display": "Prisma Twin Gremlins",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": []
+  },
+  "twin_grakatas": {
+    "display": "Twin Grakatas",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": []
+  },
+  "twin_gremlins": {
+    "display": "Twin Gremlins",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": []
+  },
+  "twin_vipers": {
+    "display": "Twin Vipers",
+    "type": "secondary",
+    "subclass": "dual_auto",
+    "flags": [],
+    "variants": [
+      "twin_vipers_wraith"
+    ]
+  },
+  "tenet_diplos": {
+    "display": "Tenet Diplos",
+    "type": "secondary",
+    "subclass": "dual_auto_burst",
+    "flags": []
+  },
+  "aksomati": {
+    "display": "Aksomati",
+    "type": "secondary",
+    "subclass": "dual_auto_spool",
+    "flags": [],
+    "variants": [
+      "aksomati_prime"
+    ]
+  },
+  "akarius": {
+    "display": "Akarius",
+    "type": "secondary",
+    "subclass": "dual_burst",
+    "flags": [],
+    "variants": [
+      "akarius_prime"
+    ]
+  },
+  "akjagara": {
+    "display": "Akjagara",
+    "type": "secondary",
+    "subclass": "dual_burst",
+    "flags": [],
+    "variants": [
+      "akjagara_prime"
+    ]
+  },
+  "akbolto": {
+    "display": "Akbolto",
+    "type": "secondary",
+    "subclass": "dual_semi",
+    "flags": [],
+    "variants": [
+      "akbolto_prime",
+      "telos_akbolto"
+    ]
+  },
+  "aklato": {
+    "display": "Aklato",
+    "type": "secondary",
+    "subclass": "dual_semi",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "aklex": {
+    "display": "Aklex",
+    "type": "secondary",
+    "subclass": "dual_semi",
+    "flags": [],
+    "variants": [
+      "aklex_prime"
+    ]
+  },
+  "akmagnus": {
+    "display": "Akmagnus",
+    "type": "secondary",
+    "subclass": "dual_semi",
+    "flags": [],
+    "variants": [
+      "akmagnus_prime"
+    ]
+  },
+  "akvasto": {
+    "display": "Akvasto",
+    "type": "secondary",
+    "subclass": "dual_semi",
+    "flags": [],
+    "variants": [
+      "akvasto_prime"
+    ]
+  },
+  "dual_toxocyst": {
+    "display": "Dual Toxocyst",
+    "type": "secondary",
+    "subclass": "dual_semi",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "twin_kohmak": {
+    "display": "Twin Kohmak",
+    "type": "secondary",
+    "subclass": "dual_shotgun_auto_spool",
+    "flags": []
+  },
+  "akbronco": {
+    "display": "Akbronco",
+    "type": "secondary",
+    "subclass": "dual_shotgun_semi",
+    "flags": [],
+    "variants": [
+      "akbronco_prime"
+    ]
+  },
+  "twin_rogga": {
+    "display": "Twin Rogga",
+    "type": "secondary",
+    "subclass": "dual_shotgun_semi",
+    "flags": []
+  },
+  "azima": {
+    "display": "Azima",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": []
+  },
+  "cestra": {
+    "display": "Cestra",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": []
+  },
+  "furis": {
+    "display": "Furis",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "mk1_furis"
+    ]
+  },
+  "hystrix": {
+    "display": "Hystrix",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "hystrix_prime"
+    ]
+  },
+  "knell": {
+    "display": "Knell",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "knell_prime"
+    ]
+  },
+  "kompressa": {
+    "display": "Kompressa",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "kompressa_prime"
+    ]
+  },
+  "onos": {
+    "display": "Onos",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": []
+  },
+  "riot_848": {
+    "display": "Riot-848",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": []
+  },
+  "sagek_prime": {
+    "display": "Sagek Prime",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": []
+  },
+  "stubba": {
+    "display": "Stubba",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": []
+  },
+  "velox": {
+    "display": "Velox",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "velox_prime"
+    ]
+  },
+  "viper": {
+    "display": "Viper",
+    "type": "secondary",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "viper_wraith"
+    ]
+  },
+  "quatz": {
+    "display": "Quatz",
+    "type": "secondary",
+    "subclass": "auto_burst",
+    "flags": []
+  },
+  "stug": {
+    "display": "Stug",
+    "type": "secondary",
+    "subclass": "auto_charge",
+    "flags": []
+  },
+  "athodai": {
+    "display": "Athodai",
+    "type": "secondary",
+    "subclass": "auto_mag_burst",
+    "flags": [],
+    "variants": [
+      "athodai_prime"
+    ]
+  },
+  "cyanex": {
+    "display": "Cyanex",
+    "type": "secondary",
+    "subclass": "auto_mag_burst",
+    "flags": []
+  },
+  "kraken": {
+    "display": "Kraken",
+    "type": "secondary",
+    "subclass": "burst",
+    "flags": []
+  },
+  "sepulcrum": {
+    "display": "Sepulcrum",
+    "type": "secondary",
+    "subclass": "burst",
+    "flags": []
+  },
+  "sicarus": {
+    "display": "Sicarus",
+    "type": "secondary",
+    "subclass": "burst",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "sicarus_prime"
+    ]
+  },
+  "kuva_kraken": {
+    "display": "Kuva Kraken",
+    "type": "secondary",
+    "subclass": "burst_mag_burst",
+    "flags": []
+  },
+  "angstrum": {
+    "display": "Angstrum",
+    "type": "secondary",
+    "subclass": "charge",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "prisma_angstrum"
+    ]
+  },
+  "zylok": {
+    "display": "Zylok",
+    "type": "secondary",
+    "subclass": "duplex",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "zylok_prime"
+    ]
+  },
+  "atomos": {
+    "display": "Atomos",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "catabolyst": {
+    "display": "Catabolyst",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "coda_catabolyst": {
+    "display": "Coda Catabolyst",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "cycron": {
+    "display": "Cycron",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "embolist": {
+    "display": "Embolist",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "gammacor": {
+    "display": "Gammacor",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "synoid_gammacor"
+    ]
+  },
+  "kuva_nukor": {
+    "display": "Kuva Nukor",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "nukor": {
+    "display": "Nukor",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "ocucor": {
+    "display": "Ocucor",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "spectra": {
+    "display": "Spectra",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "spectra_vandal": {
+    "display": "Spectra Vandal",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": []
+  },
+  "tenet_cycron": {
+    "display": "Tenet Cycron",
+    "type": "secondary",
+    "subclass": "held",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "laetum": {
+    "display": "Laetum",
+    "type": "secondary",
+    "subclass": "semi_auto",
+    "flags": [
+      "incarnon",
+      "devastating_attrition",
+      "wants_negative_cc"
+    ]
+  },
+  "epitaph": {
+    "display": "Epitaph",
+    "type": "secondary",
+    "subclass": "semi_charge",
+    "flags": [],
+    "variants": [
+      "epitaph_prime"
+    ]
+  },
+  "tenet_plinx": {
+    "display": "Tenet Plinx",
+    "type": "secondary",
+    "subclass": "semi_charge",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "acrid": {
+    "display": "Acrid",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "arca_scisco": {
+    "display": "Arca Scisco",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "bolto": {
+    "display": "Bolto",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "coda_tysis": {
+    "display": "Coda Tysis",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "kulstar": {
+    "display": "Kulstar",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "kuva_seer": {
+    "display": "Kuva Seer",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "lato": {
+    "display": "Lato",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "lato_prime",
+      "lato_vandal"
+    ]
+  },
+  "lex": {
+    "display": "Lex",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "lex_prime"
+    ]
+  },
+  "magnus": {
+    "display": "Magnus",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": [],
+    "variants": [
+      "magnus_prime"
+    ]
+  },
+  "marelok": {
+    "display": "Marelok",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": [],
+    "variants": [
+      "vaykor_marelok"
+    ]
+  },
+  "plinx": {
+    "display": "Plinx",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": [
+      "infinite_ammo_battery"
+    ]
+  },
+  "seer": {
+    "display": "Seer",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "sonicor": {
+    "display": "Sonicor",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "tenet_spirex": {
+    "display": "Tenet Spirex",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "tysis": {
+    "display": "Tysis",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "vasto": {
+    "display": "Vasto",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "vasto_prime"
+    ]
+  },
+  "vesper_77": {
+    "display": "Vesper 77",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "zakti": {
+    "display": "Zakti",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": [],
+    "variants": [
+      "zakti_prime"
+    ]
+  },
+  "zymos": {
+    "display": "Zymos",
+    "type": "secondary",
+    "subclass": "semi",
+    "flags": []
+  },
+  "efv_8_mars": {
+    "display": "EFV-8 Mars",
+    "type": "secondary",
+    "subclass": "semi_charge",
+    "flags": []
+  },
+  "pandero": {
+    "display": "Pandero",
+    "type": "secondary",
+    "subclass": "semi_mag_burst",
+    "flags": [],
+    "variants": [
+      "pandero_prime"
+    ]
+  },
+  "pyrana": {
+    "display": "Pyrana",
+    "type": "secondary",
+    "subclass": "shotgun_auto",
+    "flags": [],
+    "variants": [
+      "pyrana_prime"
+    ]
+  },
+  "kohmak": {
+    "display": "Kohmak",
+    "type": "secondary",
+    "subclass": "shotgun_auto_spool",
+    "flags": []
+  },
+  "brakk": {
+    "display": "Brakk",
+    "type": "secondary",
+    "subclass": "shotgun_semi",
+    "flags": []
+  },
+  "bronco": {
+    "display": "Bronco",
+    "type": "secondary",
+    "subclass": "shotgun_semi",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "bronco_prime"
+    ]
+  },
+  "detron": {
+    "display": "Detron",
+    "type": "secondary",
+    "subclass": "shotgun_semi",
+    "flags": [],
+    "variants": [
+      "mara_detron"
+    ]
+  },
+  "euphona_prime": {
+    "display": "Euphona Prime",
+    "type": "secondary",
+    "subclass": "shotgun_semi",
+    "flags": []
+  },
+  "kuva_brakk": {
+    "display": "Kuva Brakk",
+    "type": "secondary",
+    "subclass": "shotgun_semi",
+    "flags": []
+  },
+  "tenet_detron": {
+    "display": "Tenet Detron",
+    "type": "secondary",
+    "subclass": "shotgun_semi_mag_burst",
+    "flags": []
+  },
+  "aegrit": {
+    "display": "Aegrit",
+    "type": "secondary",
+    "subclass": "thrown_active",
+    "flags": []
+  },
+  "castanas": {
+    "display": "Castanas",
+    "type": "secondary",
+    "subclass": "thrown_active",
+    "flags": [],
+    "variants": [
+      "sancti_castanas"
+    ]
+  },
+  "talons": {
+    "display": "Talons",
+    "type": "secondary",
+    "subclass": "thrown_active",
+    "flags": []
+  },
+  "cantare": {
+    "display": "Cantare",
+    "type": "secondary",
+    "subclass": "thrown_auto",
+    "flags": []
+  },
+  "coda_pox": {
+    "display": "Coda Pox",
+    "type": "secondary",
+    "subclass": "thrown_auto",
+    "flags": []
+  },
+  "despair": {
+    "display": "Despair",
+    "type": "secondary",
+    "subclass": "thrown_auto",
+    "flags": []
+  },
+  "hikou": {
+    "display": "Hikou",
+    "type": "secondary",
+    "subclass": "thrown_auto",
+    "flags": [],
+    "variants": [
+      "hikou_prime"
+    ]
+  },
+  "kunai": {
+    "display": "Kunai",
+    "type": "secondary",
+    "subclass": "thrown_auto",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "mk1_kunai"
+    ]
+  },
+  "pox": {
+    "display": "Pox",
+    "type": "secondary",
+    "subclass": "thrown_auto",
+    "flags": []
+  },
+  "spira": {
+    "display": "Spira",
+    "type": "secondary",
+    "subclass": "thrown_auto",
+    "flags": [],
+    "variants": [
+      "spira_prime"
+    ]
+  },
+  "fusilai": {
+    "display": "Fusilai",
+    "type": "secondary",
+    "subclass": "thrown_auto_semi",
+    "flags": []
+  },
+  "scyotid": {
+    "display": "Scyotid",
+    "type": "secondary",
+    "subclass": "thrown_auto_semi",
+    "flags": []
+  },
+  "staticor": {
+    "display": "Staticor",
+    "type": "secondary",
+    "subclass": "thrown_charge",
+    "flags": []
+  },
+  "grimoire": {
+    "display": "Grimoire",
+    "type": "secondary",
+    "subclass": "tome_auto",
+    "flags": [
+      "infinite_ammo"
+    ]
+  },
+  "ghoulsaw": {
+    "display": "Ghoulsaw",
+    "type": "melee",
+    "subclass": "assault_saw",
+    "flags": []
+  },
+  "kuva_ghoulsaw": {
+    "display": "Kuva Ghoulsaw",
+    "type": "melee",
+    "subclass": "assault_saw",
+    "flags": []
+  },
+  "vinquibus_melee": {
+    "display": "Vinquibus (Melee)",
+    "type": "melee",
+    "subclass": "bayonet",
+    "flags": []
+  },
+  "lacera": {
+    "display": "Lacera",
+    "type": "melee",
+    "subclass": "blade_and_whip",
+    "flags": [],
+    "variants": [
+      "ceti_lacera"
+    ]
+  },
+  "dorrclave": {
+    "display": "Dorrclave",
+    "type": "melee",
+    "subclass": "blade_and_whip",
+    "flags": []
+  },
+  "jat_kusar": {
+    "display": "Jat Kusar",
+    "type": "melee",
+    "subclass": "blade_and_whip",
+    "flags": []
+  },
+  "mios": {
+    "display": "Mios",
+    "type": "melee",
+    "subclass": "blade_and_whip",
+    "flags": []
+  },
+  "keratinos": {
+    "display": "Keratinos",
+    "type": "melee",
+    "subclass": "claws",
+    "flags": []
+  },
+  "ripkas": {
+    "display": "Ripkas",
+    "type": "melee",
+    "subclass": "claws",
+    "flags": []
+  },
+  "venka": {
+    "display": "Venka",
+    "type": "melee",
+    "subclass": "claws",
+    "flags": [],
+    "variants": [
+      "venka_prime"
+    ]
+  },
+  "ceramic_dagger": {
+    "display": "Ceramic Dagger",
+    "type": "melee",
+    "subclass": "dagger",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "dark_dagger": {
+    "display": "Dark Dagger",
+    "type": "melee",
+    "subclass": "dagger",
+    "flags": [],
+    "variants": [
+      "rakta_dark_dagger"
+    ]
+  },
+  "heat_dagger": {
+    "display": "Heat Dagger",
+    "type": "melee",
+    "subclass": "dagger",
+    "flags": []
+  },
+  "innodem": {
+    "display": "Innodem",
+    "type": "melee",
+    "subclass": "dagger",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "karyst": {
+    "display": "Karyst",
+    "type": "melee",
+    "subclass": "dagger",
+    "flags": [],
+    "variants": [
+      "karyst_prime"
+    ]
+  },
+  "rumblejack": {
+    "display": "Rumblejack",
+    "type": "melee",
+    "subclass": "dagger",
+    "flags": []
+  },
+  "sheev": {
+    "display": "Sheev",
+    "type": "melee",
+    "subclass": "dagger",
+    "flags": []
+  },
+  "ether_daggers": {
+    "display": "Ether Daggers",
+    "type": "melee",
+    "subclass": "dual_daggers",
+    "flags": []
+  },
+  "fang": {
+    "display": "Fang",
+    "type": "melee",
+    "subclass": "dual_daggers",
+    "flags": [],
+    "variants": [
+      "fang_prime"
+    ]
+  },
+  "nepheri": {
+    "display": "Nepheri",
+    "type": "melee",
+    "subclass": "dual_daggers",
+    "flags": []
+  },
+  "okina": {
+    "display": "Okina",
+    "type": "melee",
+    "subclass": "dual_daggers",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "okina_prime"
+    ]
+  },
+  "sun_and_moon": {
+    "display": "Sun & Moon",
+    "type": "melee",
+    "subclass": "dual_nikanas",
+    "flags": []
+  },
+  "dark_split_sword": {
+    "display": "Dark Split-Sword",
+    "type": "melee",
+    "subclass": "dual_swords_heavy_blade",
+    "flags": [],
+    "note": "Switches between Dual Swords and Heavy Blade. Same riven for both."
+  },
+  "dex_dakra": {
+    "display": "Dex Dakra",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "dual_cleavers": {
+    "display": "Dual Cleavers",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": [],
+    "variants": [
+      "prisma_dual_cleavers"
+    ]
+  },
+  "dual_ether": {
+    "display": "Dual Ether",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "dual_heat_swords": {
+    "display": "Dual Heat Swords",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "dual_ichor": {
+    "display": "Dual Ichor",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "dual_kamas": {
+    "display": "Dual Kamas",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": [],
+    "variants": [
+      "dual_kamas_prime"
+    ]
+  },
+  "dual_keres": {
+    "display": "Dual Keres",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": [],
+    "variants": [
+      "dual_keres_prime"
+    ]
+  },
+  "dual_raza": {
+    "display": "Dual Raza",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "dual_skana": {
+    "display": "Dual Skana",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "dual_viciss": {
+    "display": "Dual Viciss",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "dual_zoren": {
+    "display": "Dual Zoren",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": [],
+    "variants": [
+      "dual_zoren_prime"
+    ]
+  },
+  "nami_skyla": {
+    "display": "Nami Skyla",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": [],
+    "variants": [
+      "nami_skyla_prime"
+    ]
+  },
+  "twin_basolk": {
+    "display": "Twin Basolk",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "twin_krohkur": {
+    "display": "Twin Krohkur",
+    "type": "melee",
+    "subclass": "dual_swords",
+    "flags": []
+  },
+  "ankyros": {
+    "display": "Ankyros",
+    "type": "melee",
+    "subclass": "fist",
+    "flags": [],
+    "variants": [
+      "ankyros_prime"
+    ]
+  },
+  "furax": {
+    "display": "Furax",
+    "type": "melee",
+    "subclass": "fist",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "furax_wraith",
+      "mk1_furax"
+    ]
+  },
+  "ruvox": {
+    "display": "Ruvox",
+    "type": "melee",
+    "subclass": "fist",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "tekko": {
+    "display": "Tekko",
+    "type": "melee",
+    "subclass": "fist",
+    "flags": [],
+    "variants": [
+      "tekko_prime"
+    ]
+  },
+  "cerata": {
+    "display": "Cerata",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": []
+  },
+  "coda_pathocyst": {
+    "display": "Coda Pathocyst",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": []
+  },
+  "falcor": {
+    "display": "Falcor",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": []
+  },
+  "glaive": {
+    "display": "Glaive",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": [],
+    "variants": [
+      "glaive_prime"
+    ]
+  },
+  "halikar": {
+    "display": "Halikar",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": [],
+    "variants": [
+      "halikar_wraith"
+    ]
+  },
+  "kestrel": {
+    "display": "Kestrel",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": [],
+    "variants": [
+      "kestrel_prime"
+    ]
+  },
+  "orvius": {
+    "display": "Orvius",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": []
+  },
+  "pathocyst": {
+    "display": "Pathocyst",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": []
+  },
+  "xoris": {
+    "display": "Xoris",
+    "type": "melee",
+    "subclass": "glaive",
+    "flags": []
+  },
+  "redeemer": {
+    "display": "Redeemer",
+    "type": "melee",
+    "subclass": "gunblade",
+    "flags": [],
+    "variants": [
+      "redeemer_prime"
+    ]
+  },
+  "sarpa": {
+    "display": "Sarpa",
+    "type": "melee",
+    "subclass": "gunblade",
+    "flags": []
+  },
+  "stropha": {
+    "display": "Stropha",
+    "type": "melee",
+    "subclass": "gunblade",
+    "flags": []
+  },
+  "vastilok": {
+    "display": "Vastilok",
+    "type": "melee",
+    "subclass": "gunblade",
+    "flags": []
+  },
+  "arca_titron": {
+    "display": "Arca Titron",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": []
+  },
+  "coda_motovore": {
+    "display": "Coda Motovore",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": []
+  },
+  "ekhein": {
+    "display": "Ekhein",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": []
+  },
+  "fragor": {
+    "display": "Fragor",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": [],
+    "variants": [
+      "fragor_prime"
+    ]
+  },
+  "heliocor": {
+    "display": "Heliocor",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": [],
+    "variants": [
+      "synoid_heliocor"
+    ]
+  },
+  "jat_kittag": {
+    "display": "Jat Kittag",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": []
+  },
+  "kuva_shildeg": {
+    "display": "Kuva Shildeg",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": []
+  },
+  "magistar": {
+    "display": "Magistar",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": [
+      "incarnon"
+    ],
+    "variants": [
+      "sancti_magistar"
+    ]
+  },
+  "sampotes": {
+    "display": "Sampotes",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": []
+  },
+  "sibear": {
+    "display": "Sibear",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "volnus": {
+    "display": "Volnus",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": [],
+    "variants": [
+      "volnus_prime"
+    ]
+  },
+  "wolf_sledge": {
+    "display": "Wolf Sledge",
+    "type": "melee",
+    "subclass": "hammer",
+    "flags": []
+  },
+  "galatine": {
+    "display": "Galatine",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": [],
+    "variants": [
+      "galatine_prime"
+    ]
+  },
+  "gram": {
+    "display": "Gram",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": [],
+    "variants": [
+      "gram_prime"
+    ]
+  },
+  "masseter": {
+    "display": "Masseter",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": [],
+    "variants": [
+      "masseter_prime"
+    ]
+  },
+  "paracesis": {
+    "display": "Paracesis",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": []
+  },
+  "sarofang": {
+    "display": "Sarofang",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": [],
+    "variants": [
+      "sarofang_prime"
+    ]
+  },
+  "scindo": {
+    "display": "Scindo",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": [],
+    "variants": [
+      "scindo_prime"
+    ]
+  },
+  "tenet_exec": {
+    "display": "Tenet Exec",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": []
+  },
+  "vitrica": {
+    "display": "Vitrica",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": []
+  },
+  "war": {
+    "display": "War",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": [],
+    "variants": [
+      "war_prime"
+    ]
+  },
+  "zenistar": {
+    "display": "Zenistar",
+    "type": "melee",
+    "subclass": "heavy_blade",
+    "flags": []
+  },
+  "corufell": {
+    "display": "Corufell",
+    "type": "melee",
+    "subclass": "heavy_scythe",
+    "flags": []
+  },
+  "hespar": {
+    "display": "Hespar",
+    "type": "melee",
+    "subclass": "heavy_scythe",
+    "flags": []
+  },
+  "pride": {
+    "display": "Pride",
+    "type": "melee",
+    "subclass": "heavy_scythe",
+    "flags": []
+  },
+  "thalys": {
+    "display": "Thalys",
+    "type": "melee",
+    "subclass": "heavy_scythe",
+    "flags": []
+  },
+  "wrath": {
+    "display": "Wrath",
+    "type": "melee",
+    "subclass": "heavy_scythe",
+    "flags": []
+  },
+  "gazal_machete": {
+    "display": "Gazal Machete",
+    "type": "melee",
+    "subclass": "machete",
+    "flags": []
+  },
+  "kama": {
+    "display": "Kama",
+    "type": "melee",
+    "subclass": "machete",
+    "flags": []
+  },
+  "kreska": {
+    "display": "Kreska",
+    "type": "melee",
+    "subclass": "machete",
+    "flags": []
+  },
+  "machete": {
+    "display": "Machete",
+    "type": "melee",
+    "subclass": "machete",
+    "flags": [],
+    "variants": [
+      "machete_wraith",
+      "prisma_machete"
+    ]
+  },
+  "nami_solo": {
+    "display": "Nami Solo",
+    "type": "melee",
+    "subclass": "machete",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "prova": {
+    "display": "Prova",
+    "type": "melee",
+    "subclass": "machete",
+    "flags": [],
+    "variants": [
+      "prova_vandal"
+    ]
+  },
+  "slaytra": {
+    "display": "Slaytra",
+    "type": "melee",
+    "subclass": "machete",
+    "flags": []
+  },
+  "dragon_nikana": {
+    "display": "Dragon Nikana",
+    "type": "melee",
+    "subclass": "nikana",
+    "flags": []
+  },
+  "nikana": {
+    "display": "Nikana",
+    "type": "melee",
+    "subclass": "nikana",
+    "flags": [],
+    "variants": [
+      "dex_nikana",
+      "nikana_prime"
+    ]
+  },
+  "skiajati": {
+    "display": "Skiajati",
+    "type": "melee",
+    "subclass": "nikana",
+    "flags": []
+  },
+  "syam": {
+    "display": "Syam",
+    "type": "melee",
+    "subclass": "nikana",
+    "flags": []
+  },
+  "ninkondi": {
+    "display": "Ninkondi",
+    "type": "melee",
+    "subclass": "nunchaku",
+    "flags": [],
+    "variants": [
+      "ninkondi_prime"
+    ]
+  },
+  "pulmonars": {
+    "display": "Pulmonars",
+    "type": "melee",
+    "subclass": "nunchaku",
+    "flags": []
+  },
+  "shaku": {
+    "display": "Shaku",
+    "type": "melee",
+    "subclass": "nunchaku",
+    "flags": []
+  },
+  "amanata": {
+    "display": "Amanata",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "cassowar": {
+    "display": "Cassowar",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "edun": {
+    "display": "Edun",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "guandao": {
+    "display": "Guandao",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": [],
+    "variants": [
+      "guandao_prime"
+    ]
+  },
+  "kesheg": {
+    "display": "Kesheg",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "korumm": {
+    "display": "Korumm",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "lesion": {
+    "display": "Lesion",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "orthos": {
+    "display": "Orthos",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": [],
+    "variants": [
+      "orthos_prime"
+    ]
+  },
+  "pupacyst": {
+    "display": "Pupacyst",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "serro": {
+    "display": "Serro",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "sydon": {
+    "display": "Sydon",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": [],
+    "variants": [
+      "vaykor_sydon"
+    ]
+  },
+  "tonbo": {
+    "display": "Tonbo",
+    "type": "melee",
+    "subclass": "polearm",
+    "flags": []
+  },
+  "destreza": {
+    "display": "Destreza",
+    "type": "melee",
+    "subclass": "rapier",
+    "flags": [],
+    "variants": [
+      "destreza_prime"
+    ]
+  },
+  "endura": {
+    "display": "Endura",
+    "type": "melee",
+    "subclass": "rapier",
+    "flags": []
+  },
+  "anku": {
+    "display": "Anku",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "caustacyst": {
+    "display": "Caustacyst",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "coda_caustacyst": {
+    "display": "Coda Caustacyst",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "ether_reaper": {
+    "display": "Ether Reaper",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "galariak_prime": {
+    "display": "Galariak Prime",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "harmony": {
+    "display": "Harmony",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "hate": {
+    "display": "Hate",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "reaper_prime": {
+    "display": "Reaper Prime",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "tenet_grigori": {
+    "display": "Tenet Grigori",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": []
+  },
+  "venato": {
+    "display": "Venato",
+    "type": "melee",
+    "subclass": "scythe",
+    "flags": [],
+    "variants": [
+      "venato_prime"
+    ]
+  },
+  "coda_hirudo": {
+    "display": "Coda Hirudo",
+    "type": "melee",
+    "subclass": "sparring",
+    "flags": []
+  },
+  "hirudo": {
+    "display": "Hirudo",
+    "type": "melee",
+    "subclass": "sparring",
+    "flags": []
+  },
+  "kogake": {
+    "display": "Kogake",
+    "type": "melee",
+    "subclass": "sparring",
+    "flags": [],
+    "variants": [
+      "kogake_prime"
+    ]
+  },
+  "korrudo": {
+    "display": "Korrudo",
+    "type": "melee",
+    "subclass": "sparring",
+    "flags": []
+  },
+  "obex": {
+    "display": "Obex",
+    "type": "melee",
+    "subclass": "sparring",
+    "flags": [],
+    "variants": [
+      "prisma_obex"
+    ]
+  },
+  "amphis": {
+    "display": "Amphis",
+    "type": "melee",
+    "subclass": "staff",
+    "flags": []
+  },
+  "bo": {
+    "display": "Bo",
+    "type": "melee",
+    "subclass": "staff",
+    "flags": [],
+    "variants": [
+      "bo_prime",
+      "mk1_bo"
+    ]
+  },
+  "broken_scepter": {
+    "display": "Broken Scepter",
+    "type": "melee",
+    "subclass": "staff",
+    "flags": []
+  },
+  "cadus": {
+    "display": "Cadus",
+    "type": "melee",
+    "subclass": "staff",
+    "flags": []
+  },
+  "tipedo": {
+    "display": "Tipedo",
+    "type": "melee",
+    "subclass": "staff",
+    "flags": [],
+    "variants": [
+      "tipedo_prime"
+    ]
+  },
+  "ack_and_brunt": {
+    "display": "Ack & Brunt",
+    "type": "melee",
+    "subclass": "sword_and_shield",
+    "flags": []
+  },
+  "argo_and_vel": {
+    "display": "Argo & Vel",
+    "type": "melee",
+    "subclass": "sword_and_shield",
+    "flags": []
+  },
+  "cobra_and_crane": {
+    "display": "Cobra & Crane",
+    "type": "melee",
+    "subclass": "sword_and_shield",
+    "flags": [],
+    "variants": [
+      "cobra_and_crane_prime"
+    ]
+  },
+  "sigma_and_octantis": {
+    "display": "Sigma & Octantis",
+    "type": "melee",
+    "subclass": "sword_and_shield",
+    "flags": []
+  },
+  "silva_and_aegis": {
+    "display": "Silva & Aegis",
+    "type": "melee",
+    "subclass": "sword_and_shield",
+    "flags": [],
+    "variants": [
+      "silva_and_aegis_prime"
+    ]
+  },
+  "tak_and_lug": {
+    "display": "Tak & Lug",
+    "type": "melee",
+    "subclass": "sword_and_shield",
+    "flags": []
+  },
+  "tenet_agendus": {
+    "display": "Tenet Agendus",
+    "type": "melee",
+    "subclass": "sword_and_shield",
+    "flags": []
+  },
+  "broken_war": {
+    "display": "Broken War",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "coda_mire": {
+    "display": "Coda Mire",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "cronus": {
+    "display": "Cronus",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "dakra_prime": {
+    "display": "Dakra Prime",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "dark_sword": {
+    "display": "Dark Sword",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "ether_sword": {
+    "display": "Ether Sword",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "heat_sword": {
+    "display": "Heat Sword",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "jaw_sword": {
+    "display": "Jaw Sword",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "krohkur": {
+    "display": "Krohkur",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "mire": {
+    "display": "Mire",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "pangolin_sword": {
+    "display": "Pangolin Sword",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": [],
+    "variants": [
+      "pangolin_prime"
+    ]
+  },
+  "plasma_sword": {
+    "display": "Plasma Sword",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": []
+  },
+  "skana": {
+    "display": "Skana",
+    "type": "melee",
+    "subclass": "sword",
+    "flags": [],
+    "variants": [
+      "prisma_skana",
+      "skana_prime"
+    ]
+  },
+  "boltace": {
+    "display": "Boltace",
+    "type": "melee",
+    "subclass": "tonfa",
+    "flags": [],
+    "variants": [
+      "telos_boltace"
+    ]
+  },
+  "kronen": {
+    "display": "Kronen",
+    "type": "melee",
+    "subclass": "tonfa",
+    "flags": [],
+    "variants": [
+      "kronen_prime"
+    ]
+  },
+  "ohma": {
+    "display": "Ohma",
+    "type": "melee",
+    "subclass": "tonfa",
+    "flags": [],
+    "variants": [
+      "prisma_ohma"
+    ]
+  },
+  "praedos": {
+    "display": "Praedos",
+    "type": "melee",
+    "subclass": "tonfa",
+    "flags": [
+      "incarnon"
+    ]
+  },
+  "tonkkatt": {
+    "display": "Tonkkatt",
+    "type": "melee",
+    "subclass": "tonfa",
+    "flags": []
+  },
+  "azothane": {
+    "display": "Azothane",
+    "type": "melee",
+    "subclass": "two_handed_nikana",
+    "flags": []
+  },
+  "pennant": {
+    "display": "Pennant",
+    "type": "melee",
+    "subclass": "two_handed_nikana",
+    "flags": []
+  },
+  "tatsu": {
+    "display": "Tatsu",
+    "type": "melee",
+    "subclass": "two_handed_nikana",
+    "flags": [],
+    "variants": [
+      "tatsu_prime"
+    ]
+  },
+  "tenet_livia": {
+    "display": "Tenet Livia",
+    "type": "melee",
+    "subclass": "two_handed_nikana",
+    "flags": []
+  },
+  "arum_spinosa": {
+    "display": "Arum Spinosa",
+    "type": "melee",
+    "subclass": "warfan",
+    "flags": []
+  },
+  "gunsen": {
+    "display": "Gunsen",
+    "type": "melee",
+    "subclass": "warfan",
+    "flags": [],
+    "variants": [
+      "gunsen_prime"
+    ]
+  },
+  "quassus": {
+    "display": "Quassus",
+    "type": "melee",
+    "subclass": "warfan",
+    "flags": [],
+    "variants": [
+      "quassus_prime"
+    ]
+  },
+  "vericres": {
+    "display": "Vericres",
+    "type": "melee",
+    "subclass": "warfan",
+    "flags": []
+  },
+  "atterax": {
+    "display": "Atterax",
+    "type": "melee",
+    "subclass": "whip",
+    "flags": []
+  },
+  "galvacord": {
+    "display": "Galvacord",
+    "type": "melee",
+    "subclass": "whip",
+    "flags": []
+  },
+  "lecta": {
+    "display": "Lecta",
+    "type": "melee",
+    "subclass": "whip",
+    "flags": [],
+    "variants": [
+      "secura_lecta"
+    ]
+  },
+  "scoliac": {
+    "display": "Scoliac",
+    "type": "melee",
+    "subclass": "whip",
+    "flags": []
+  },
+  "spinnerex": {
+    "display": "Spinnerex",
+    "type": "melee",
+    "subclass": "whip",
+    "flags": []
+  },
+  "verdilac": {
+    "display": "Verdilac",
+    "type": "melee",
+    "subclass": "whip",
+    "flags": []
+  },
+  "arbucep": {
+    "display": "Arbucep",
+    "type": "archgun",
+    "subclass": "auto",
+    "flags": []
+  },
+  "dual_decurion": {
+    "display": "Dual Decurion",
+    "type": "archgun",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "prisma_dual_decurions"
+    ]
+  },
+  "imperator": {
+    "display": "Imperator",
+    "type": "archgun",
+    "subclass": "auto",
+    "flags": [],
+    "variants": [
+      "imperator_vandal"
+    ]
+  },
+  "kuva_ayanga": {
+    "display": "Kuva Ayanga",
+    "type": "archgun",
+    "subclass": "auto",
+    "flags": []
+  },
+  "kuva_grattler": {
+    "display": "Kuva Grattler",
+    "type": "archgun",
+    "subclass": "auto",
+    "flags": []
+  },
+  "mausolon": {
+    "display": "Mausolon",
+    "type": "archgun",
+    "subclass": "auto_semi",
+    "flags": []
+  },
+  "cyngas": {
+    "display": "Cyngas",
+    "type": "archgun",
+    "subclass": "auto_burst",
+    "flags": []
+  },
+  "morgha": {
+    "display": "Morgha",
+    "type": "archgun",
+    "subclass": "auto_burst",
+    "flags": []
+  },
+  "grattler": {
+    "display": "Grattler",
+    "type": "archgun",
+    "subclass": "auto_spool",
+    "flags": []
+  },
+  "phaedra": {
+    "display": "Phaedra",
+    "type": "archgun",
+    "subclass": "auto_spool",
+    "flags": []
+  },
+  "corvas": {
+    "display": "Corvas",
+    "type": "archgun",
+    "subclass": "charge",
+    "flags": [],
+    "variants": [
+      "corvas_prime"
+    ]
+  },
+  "mandonel": {
+    "display": "Mandonel",
+    "type": "archgun",
+    "subclass": "charge",
+    "flags": []
+  },
+  "velocitus": {
+    "display": "Velocitus",
+    "type": "archgun",
+    "subclass": "charge",
+    "flags": []
+  },
+  "cortege": {
+    "display": "Cortege",
+    "type": "archgun",
+    "subclass": "held",
+    "flags": []
+  },
+  "larkspur": {
+    "display": "Larkspur",
+    "type": "archgun",
+    "subclass": "held",
+    "flags": [],
+    "variants": [
+      "larkspur_prime"
+    ]
+  },
+  "fluctus": {
+    "display": "Fluctus",
+    "type": "archgun",
+    "subclass": "semi_auto",
+    "flags": []
+  },
+  "deconstructor": {
+    "display": "Deconstructor",
+    "type": "robotic",
+    "subclass": "glaive",
+    "flags": [],
+    "variants": [
+      "deconstructor_prime"
+    ]
+  },
+  "akaten": {
+    "display": "Akaten",
+    "type": "robotic",
+    "subclass": "melee",
+    "flags": []
+  },
+  "batoten": {
+    "display": "Batoten",
+    "type": "robotic",
+    "subclass": "melee",
+    "flags": []
+  },
+  "lacerten": {
+    "display": "Lacerten",
+    "type": "robotic",
+    "subclass": "melee",
+    "flags": []
+  },
+  "burst_laser": {
+    "display": "Burst Laser",
+    "type": "robotic",
+    "subclass": "pistol_burst",
+    "flags": [],
+    "variants": [
+      "burst_laser_prime",
+      "prisma_burst_laser"
+    ]
+  },
+  "laser_rifle": {
+    "display": "Laser Rifle",
+    "type": "robotic",
+    "subclass": "rifle_auto",
+    "flags": [],
+    "variants": [
+      "prime_laser_rifle"
+    ]
+  },
+  "deth_machine_rifle": {
+    "display": "Deth Machine Rifle",
+    "type": "robotic",
+    "subclass": "rifle_auto_spool",
+    "flags": [],
+    "variants": [
+      "deth_machine_rifle_prime"
+    ]
+  },
+  "helstrum": {
+    "display": "Helstrum",
+    "type": "robotic",
+    "subclass": "rifle_burst",
+    "flags": []
+  },
+  "multron": {
+    "display": "Multron",
+    "type": "robotic",
+    "subclass": "rifle_burst",
+    "flags": []
+  },
+  "vulcax": {
+    "display": "Vulcax",
+    "type": "robotic",
+    "subclass": "rifle_charge",
+    "flags": []
+  },
+  "artax": {
+    "display": "Artax",
+    "type": "robotic",
+    "subclass": "rifle_held",
+    "flags": []
+  },
+  "tazicor": {
+    "display": "Tazicor",
+    "type": "robotic",
+    "subclass": "rifle_held",
+    "flags": []
+  },
+  "verglas": {
+    "display": "Verglas",
+    "type": "robotic",
+    "subclass": "rifle_held",
+    "flags": [],
+    "variants": [
+      "verglas_prime"
+    ]
+  },
+  "cryotra": {
+    "display": "Cryotra",
+    "type": "robotic",
+    "subclass": "rifle_semi",
+    "flags": []
+  },
+  "stinger": {
+    "display": "Stinger",
+    "type": "robotic",
+    "subclass": "rifle_semi_auto",
+    "flags": []
+  },
+  "sweeper": {
+    "display": "Sweeper",
+    "type": "robotic",
+    "subclass": "shotgun_auto",
+    "flags": [],
+    "variants": [
+      "sweeper_prime"
+    ]
+  },
+  "vulklok": {
+    "display": "Vulklok",
+    "type": "robotic",
+    "subclass": "sniper_auto",
+    "flags": []
+  }
+}

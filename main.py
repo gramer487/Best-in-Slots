@@ -8,11 +8,14 @@ from pathlib import Path
 
 import aiohttp
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 
 import modmail
+import suggestions
 from config import config, save
 from modmail import ModmailCloseView, ModmailPanelView
+from suggestions import weapon_autocomplete
 from views import SetupMenuView, build_status_embed, post_panels
 from worldstate import fetch_worldstate
 
@@ -232,6 +235,66 @@ async def setup(interaction: discord.Interaction):
         view=SetupMenuView(interaction.guild),
         ephemeral=True,
     )
+
+
+@bot.tree.command(name="suggestion", description="Suggest a weapon")
+@app_commands.describe(weapon="Weapon to suggest", note="Optional note")
+@app_commands.autocomplete(weapon=weapon_autocomplete)
+async def suggestion(
+    interaction: discord.Interaction, weapon: str, note: str | None = None
+) -> None:
+    resolved = suggestions.resolve_weapon(weapon)
+    if resolved is None:
+        await interaction.response.send_message(
+            "That weapon isn't on the list — pick one from the autocomplete.", ephemeral=True
+        )
+        return
+    key, entry = resolved
+    display = entry["display"]
+    if key in config["suggestions"]:
+        await interaction.response.send_message(
+            f"**{display}** has already been suggested.", ephemeral=True
+        )
+        return
+    channel = (
+        interaction.guild.get_channel(config["suggestion_channel_id"])
+        if config["suggestion_channel_id"]
+        else None
+    )
+    role = (
+        interaction.guild.get_role(config["suggestion_ping_role_id"])
+        if config["suggestion_ping_role_id"]
+        else None
+    )
+    if channel is None or role is None:
+        await interaction.response.send_message(
+            "Suggestions aren't configured yet. Ask an admin to run `/setup`.", ephemeral=True
+        )
+        return
+    embed = discord.Embed(title=display, color=discord.Color.blurple())
+    if note and note.strip():
+        embed.description = note.strip()[:4096]
+    embed.add_field(name="Suggested by", value=f"<@!{interaction.user.id}>", inline=False)
+    # Posting can take a moment — acknowledge while it happens.
+    await interaction.response.defer(ephemeral=True)
+    # Reserve the weapon before the network call so two people can't suggest it at once.
+    config["suggestions"].append(key)
+    save()
+    try:
+        await channel.send(
+            content=role.mention,
+            embed=embed,
+            allowed_mentions=discord.AllowedMentions(roles=[role]),
+        )
+    except discord.HTTPException:
+        config["suggestions"].remove(key)
+        save()
+        await interaction.followup.send(
+            "I couldn't post the suggestion — check my permissions in that channel.",
+            ephemeral=True,
+        )
+        return
+    await interaction.followup.send(f"✅ Successfully suggested **{display}**.", ephemeral=True)
 
 
 @bot.tree.error
