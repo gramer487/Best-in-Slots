@@ -43,6 +43,11 @@ async def on_ready():
     # Persistent views must be registered after every restart or their buttons die.
     bot.add_view(ModmailPanelView())
     bot.add_view(ModmailCloseView())
+    await bot.change_presence(
+        activity=discord.Activity(
+            type=discord.ActivityType.watching, name="do /suggestion for BiS req"
+        )
+    )
     guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
     channel = guild.get_channel(config["channel_id"]) if guild and config["channel_id"] else None
     if channel is None:
