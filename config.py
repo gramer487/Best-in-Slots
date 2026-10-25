@@ -26,6 +26,7 @@ _DEFAULTS = {
     "modmail_category_id": None,  # staff-only category holding the modmail channels
     "modmail_panel_message_id": None,
     "modmails": {},  # str(user_id) -> modmail channel id
+    "modmail_closes": {},  # str(channel_id) -> {"user_id", "close_at": iso, "warned": bool}
     "modmail_history": {},  # str(user_id) -> [{"thread": forum thread id, "title": ...}]
 }
 

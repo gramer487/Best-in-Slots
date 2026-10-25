@@ -83,6 +83,8 @@ async def on_ready():
               "re-invite it with the URL from the README and restart.")
     if not expire_threads.is_running():
         expire_threads.start()
+    if not check_modmail_closes.is_running():
+        check_modmail_closes.start()
     global _status_task
     if _status_task is None or _status_task.done():
         _status_task = bot.loop.create_task(status_task())
@@ -131,6 +133,12 @@ async def expire_threads():
         changed = True
     if changed:
         save()
+
+
+@tasks.loop(minutes=1)
+async def check_modmail_closes():
+    """Close scheduled modmails when due (and warn their users 10 minutes before)."""
+    await modmail.process_scheduled_closes(bot)
 
 
 async def refresh_status(channel) -> dict | None:
@@ -300,6 +308,59 @@ async def suggestion(
         )
         return
     await interaction.followup.send(f"✅ Successfully suggested **{display}**.", ephemeral=True)
+
+
+@bot.tree.command(name="openthread", description="Open a modmail with a user")
+@app_commands.describe(userid="ID of the user to contact")
+async def openthread(interaction: discord.Interaction, userid: str) -> None:
+    moderator = interaction.user if isinstance(interaction.user, discord.Member) else None
+    if interaction.guild is None or moderator is None or not modmail.is_moderator(moderator):
+        await interaction.response.send_message(
+            "Only moderators can open a modmail.", ephemeral=True
+        )
+        return
+    try:
+        target_id = int(userid.strip())
+    except ValueError:
+        await interaction.response.send_message("That isn't a valid user ID.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    guild = interaction.guild
+    target = guild.get_member(target_id)
+    if target is None:
+        try:
+            target = await guild.fetch_member(target_id)
+        except discord.NotFound:
+            target = None
+        except discord.HTTPException:
+            await interaction.followup.send(
+                "Couldn't look that user up — try again.", ephemeral=True
+            )
+            return
+    if target is None:
+        await interaction.followup.send("That user isn't in the server.", ephemeral=True)
+        return
+    channel, created = await modmail.ensure_modmail_channel(guild, target)
+    if channel is None:
+        await interaction.followup.send(
+            "Modmail isn't configured yet. Ask an admin to run `/setup`.", ephemeral=True
+        )
+        return
+    if created:
+        await modmail.announce_new_channel(channel, target)
+    try:
+        await target.send(
+            "📨 A moderator would like to speak with you. "
+            "Reply to this DM and your message will reach the staff team."
+        )
+        dm_note = ""
+    except discord.HTTPException:
+        dm_note = "\n⚠️ Couldn't DM them — they may have DMs closed."
+    if created:
+        result = f"✅ Opened a modmail with {target.name} ({target.id}): {channel.mention}"
+    else:
+        result = f"ℹ️ A modmail with {target.name} ({target.id}) is already open: {channel.mention}"
+    await interaction.followup.send(result + dm_note, ephemeral=True)
 
 
 @bot.tree.error

@@ -27,7 +27,11 @@ transcripts. Every message they send the bot is relayed there as an embed; attac
 (screenshots etc.) are copied along with it and re-uploaded into the transcript thread.
 Moderators reply with `&reply <message>` (or `&r <message>`)
 and close the conversation with `&close` or the **Close** button, which posts a transcript
-(usernames only, no pings) to the configured log forum and deletes the channel. Setup fields:
+(usernames only, no pings) to the configured log forum and deletes the channel. `&close 10m`
+or `&close 1h` schedules the close instead: the opener is DM'd 10 minutes before it happens,
+and any new message from either side cancels it. `&id` prints the opener's ID in a copyable
+code block, and `/openthread <userid>` (moderators only) opens a modmail from the staff side
+and DMs the user. Setup fields:
 panel channel (optional), roles pinged for new modmail, the moderator role, and the log forum
 (optional).
 

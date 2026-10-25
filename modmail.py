@@ -19,6 +19,8 @@ from config import config, save
 CATEGORY_NAME = "Modmail"
 REPLY_PREFIX = "Reply from Moderator: "
 _CONFIRM_DM = "✅ Your message has been successfully forwarded to the staff team."
+_WARN_BEFORE = dt.timedelta(minutes=10)
+_CLOSE_ARG = re.compile(r"^(\d+)\s*([mh])$")
 
 
 def _channel_name(name: str) -> str:
@@ -82,7 +84,7 @@ async def ensure_modmail_channel(
     return channel, True
 
 
-async def _announce_new_channel(channel: discord.TextChannel, member: discord.Member) -> None:
+async def announce_new_channel(channel: discord.TextChannel, member: discord.Member) -> None:
     """First message in the channel: who they are, past mails, and the commands."""
     guild = channel.guild
     embed = discord.Embed(
@@ -186,7 +188,7 @@ class ModmailConfirmView(discord.ui.View):
             )
             return
         if created:
-            await _announce_new_channel(channel, member)
+            await announce_new_channel(channel, member)
         try:
             await member.send(_CONFIRM_DM)
         except discord.HTTPException:
@@ -230,7 +232,8 @@ async def handle_dm(message: discord.Message, guild: discord.Guild | None) -> No
             pass
         return
     if created:
-        await _announce_new_channel(channel, member)
+        await announce_new_channel(channel, member)
+    await cancel_scheduled_close(channel)
     text = message.content.strip()
     files: list[discord.File] = []
     fallback: list[str] = []
@@ -259,11 +262,87 @@ async def handle_dm(message: discord.Message, guild: discord.Guild | None) -> No
             pass
 
 
-def _is_moderator(member: discord.Member) -> bool:
+def is_moderator(member: discord.Member) -> bool:
     if member.guild_permissions.administrator:
         return True
     role = member.guild.get_role(config["modmail_mod_role_id"]) if config["modmail_mod_role_id"] else None
     return role is not None and role in member.roles
+
+
+def parse_close_delay(text: str) -> dt.timedelta | None:
+    """Parse a `&close` interval like '10m' or '1h'; None if it isn't one."""
+    match = _CLOSE_ARG.fullmatch(text.strip().lower())
+    if match is None:
+        return None
+    amount = int(match.group(1))
+    if amount <= 0:
+        return None
+    return dt.timedelta(minutes=amount) if match.group(2) == "m" else dt.timedelta(hours=amount)
+
+
+def _format_delay(delta: dt.timedelta) -> str:
+    minutes = max(1, int((delta.total_seconds() + 59) // 60))
+    hours, minutes = divmod(minutes, 60)
+    if hours and minutes:
+        return f"{hours}h {minutes}m"
+    if hours:
+        return f"{hours} hour{'s' if hours != 1 else ''}"
+    return f"{minutes} minute{'s' if minutes != 1 else ''}"
+
+
+async def _notify_closing(
+    channel: discord.TextChannel, user_id: str, remaining: dt.timedelta
+) -> None:
+    """DM the opener that the scheduled close is soon; tell staff if it fails."""
+    member = channel.guild.get_member(int(user_id))
+    if member is None:
+        try:
+            member = await channel.guild.fetch_member(int(user_id))
+        except discord.HTTPException:
+            member = None
+    if member is not None:
+        try:
+            await member.send(
+                f"⏳ This modmail will close in {_format_delay(remaining)} unless you reply. "
+                "Any message keeps it open."
+            )
+            return
+        except discord.HTTPException:
+            pass
+    try:
+        await channel.send("⚠️ Couldn't DM the user about the upcoming close.")
+    except discord.HTTPException:
+        pass
+
+
+async def schedule_close(
+    channel: discord.TextChannel, user_id: str, delay: dt.timedelta
+) -> None:
+    entry = {
+        "user_id": str(user_id),
+        "close_at": (dt.datetime.now(dt.timezone.utc) + delay).isoformat(),
+        "warned": False,
+    }
+    config["modmail_closes"][str(channel.id)] = entry
+    save()
+    await channel.send(
+        f"🗑️ This modmail will close in {_format_delay(delay)} unless a new message is sent."
+    )
+    if delay <= _WARN_BEFORE:
+        entry["warned"] = True
+        save()
+        await _notify_closing(channel, str(user_id), delay)
+
+
+async def cancel_scheduled_close(channel: discord.TextChannel) -> None:
+    """Any new message on either side keeps the modmail open."""
+    if config["modmail_closes"].pop(str(channel.id), None) is None:
+        return
+    save()
+    try:
+        await channel.send("⏳ Scheduled close cancelled.")
+    except discord.HTTPException:
+        pass
 
 
 class ModmailCloseView(discord.ui.View):
@@ -285,7 +364,7 @@ class ModmailCloseView(discord.ui.View):
                 "This isn't an active modmail.", ephemeral=True
             )
             return
-        if not _is_moderator(interaction.user):
+        if not is_moderator(interaction.user):
             await interaction.response.send_message(
                 "Only moderators can close this.", ephemeral=True
             )
@@ -295,16 +374,38 @@ class ModmailCloseView(discord.ui.View):
 
 
 async def handle_staff(message: discord.Message) -> None:
-    """Handle `&reply`/`&r` and `&close` inside a modmail channel."""
+    """Handle `&reply`/`&r`, `&close [10m|1h]` and `&id` inside a modmail channel."""
     user_id = next(
         (uid for uid, cid in config["modmails"].items() if cid == message.channel.id), None
     )
-    if user_id is None or not _is_moderator(message.author):
+    if user_id is None or not is_moderator(message.author):
         return
     content = message.content.strip()
     lower = content.lower()
-    if lower == "&close":
-        await _close_modmail(message.channel, user_id)
+    if lower == "&close" or lower.startswith("&close "):
+        if lower == "&close":
+            await _close_modmail(message.channel, user_id)
+            return
+        delay = parse_close_delay(content[6:])
+        if delay is None:
+            await message.channel.send(
+                "Usage: `&close` to close now, `&close 10m` or `&close 1h` to schedule it."
+            )
+        else:
+            await schedule_close(message.channel, user_id, delay)
+        try:
+            await message.delete()
+        except discord.HTTPException:
+            pass
+        return
+    # Any other message from staff keeps the conversation alive.
+    await cancel_scheduled_close(message.channel)
+    if lower == "&id":
+        await message.channel.send(f"User ID:\n```\n{user_id}\n```")
+        try:
+            await message.delete()
+        except discord.HTTPException:
+            pass
         return
     if lower.startswith("&reply "):
         reply = content[7:].strip()
@@ -409,6 +510,9 @@ async def _transcript_files(
 
 
 async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
+    # This close replaces any scheduled one.
+    if config["modmail_closes"].pop(str(channel.id), None) is not None:
+        save()
     guild = channel.guild
     member = guild.get_member(int(user_id))
     if member is None:
@@ -465,6 +569,51 @@ async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
         except discord.HTTPException:
             pass
     await channel.delete()
+
+
+async def process_scheduled_closes(bot: discord.Client) -> None:
+    """Run every minute: warn 10 minutes before a scheduled close and close when due."""
+    guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
+    if guild is None:
+        return
+    now = dt.datetime.now(dt.timezone.utc)
+    changed = False
+    for channel_id, entry in list(config["modmail_closes"].items()):
+        try:
+            close_at = dt.datetime.fromisoformat(entry["close_at"])
+            user_id = str(entry["user_id"])
+        except (KeyError, ValueError):
+            config["modmail_closes"].pop(channel_id, None)
+            changed = True
+            continue
+        if close_at.tzinfo is None:
+            close_at = close_at.replace(tzinfo=dt.timezone.utc)
+        channel = guild.get_channel(int(channel_id))
+        if channel is None:
+            try:
+                channel = await guild.fetch_channel(int(channel_id))
+            except discord.NotFound:
+                channel = None
+            except discord.HTTPException:
+                continue  # transient — retry next tick
+        if channel is None:
+            config["modmail_closes"].pop(channel_id, None)
+            if config["modmails"].get(user_id) == int(channel_id):
+                config["modmails"].pop(user_id, None)
+            changed = True
+            continue
+        if now >= close_at:
+            try:
+                await _close_modmail(channel, user_id)
+            except discord.HTTPException as e:
+                print(f"Scheduled modmail close failed: {e}")
+            continue
+        if not entry.get("warned") and now >= close_at - _WARN_BEFORE:
+            entry["warned"] = True
+            save()
+            await _notify_closing(channel, user_id, close_at - now)
+    if changed:
+        save()
 
 
 class ModmailSetupView(discord.ui.View):
