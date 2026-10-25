@@ -27,6 +27,7 @@ _DEFAULTS = {
     "modmail_panel_message_id": None,
     "modmails": {},  # str(user_id) -> modmail channel id
     "modmail_closes": {},  # str(channel_id) -> {"user_id", "close_at": iso, "warned": bool}
+    "modmail_alerts": {},  # str(modmail_channel_id) -> [moderator ids pinged on user replies]
     "modmail_history": {},  # str(user_id) -> [{"thread": forum thread id, "title": ...}]
 }
 

@@ -18,7 +18,7 @@ from config import config, save
 
 CATEGORY_NAME = "Modmail"
 REPLY_PREFIX = "Reply from Moderator: "
-_CONFIRM_DM = "✅ Your message has been successfully forwarded to the staff team."
+_CONFIRM_DM = "Your message has been successfully forwarded to the staff team."
 _WARN_BEFORE = dt.timedelta(minutes=10)
 _CLOSE_ARG = re.compile(r"^(\d+)\s*([mh])$")
 
@@ -90,7 +90,8 @@ async def announce_new_channel(channel: discord.TextChannel, member: discord.Mem
     embed = discord.Embed(
         title=f"New modmail from {member.name}",
         description=(
-            "Reply with `&reply <message>` (or `&r`) — close with `&close` or the button."
+            "Reply with `&reply <message>` (or `&r`) — close with `&close` or the button. "
+            "`&alert` pings you on every user reply."
         ),
         color=discord.Color.blurple(),
     )
@@ -194,7 +195,7 @@ class ModmailConfirmView(discord.ui.View):
         except discord.HTTPException:
             pass
         await interaction.edit_original_response(
-            content="✅ A moderator will be with you shortly — check your DMs.", view=None
+            content="A moderator will be with you shortly — check your DMs.", view=None
         )
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
@@ -249,12 +250,25 @@ async def handle_dm(message: discord.Message, guild: discord.Guild | None) -> No
         text = "\n".join([text or "[attachment]", *fallback])
     elif not text and not files:
         text = "[no text]"
+    # Ping moderators who opted into alerts on this mail (restricted so nothing else pings).
+    alert_ids = config["modmail_alerts"].get(str(channel.id), [])
+    ping = " ".join(f"<@{uid}>" for uid in alert_ids) or None
+    mentions = discord.AllowedMentions(users=alert_ids)
     try:
-        await channel.send(embed=_user_embed(member, text), files=files)
+        await channel.send(
+            embed=_user_embed(member, text),
+            files=files,
+            content=ping,
+            allowed_mentions=mentions,
+        )
     except discord.HTTPException:
         # Copying the files failed (e.g. upload too large) — keep the message as links.
         links = "\n".join(a.url for a in message.attachments)
-        await channel.send(embed=_user_embed(member, "\n".join(filter(None, [text, links]))))
+        await channel.send(
+            embed=_user_embed(member, "\n".join(filter(None, [text, links]))),
+            content=ping,
+            allowed_mentions=mentions,
+        )
     if created:
         try:
             await message.channel.send(_CONFIRM_DM)
@@ -303,14 +317,14 @@ async def _notify_closing(
     if member is not None:
         try:
             await member.send(
-                f"⏳ This modmail will close in {_format_delay(remaining)} unless you reply. "
+                f"This modmail will close in {_format_delay(remaining)} unless you reply. "
                 "Any message keeps it open."
             )
             return
         except discord.HTTPException:
             pass
     try:
-        await channel.send("⚠️ Couldn't DM the user about the upcoming close.")
+        await channel.send("Couldn't DM the user about the upcoming close.")
     except discord.HTTPException:
         pass
 
@@ -326,7 +340,7 @@ async def schedule_close(
     config["modmail_closes"][str(channel.id)] = entry
     save()
     await channel.send(
-        f"🗑️ This modmail will close in {_format_delay(delay)} unless a new message is sent."
+        f"This modmail will close in {_format_delay(delay)} unless a new message is sent."
     )
     if delay <= _WARN_BEFORE:
         entry["warned"] = True
@@ -340,7 +354,7 @@ async def cancel_scheduled_close(channel: discord.TextChannel) -> None:
         return
     save()
     try:
-        await channel.send("⏳ Scheduled close cancelled.")
+        await channel.send("Scheduled close cancelled.")
     except discord.HTTPException:
         pass
 
@@ -393,19 +407,24 @@ async def handle_staff(message: discord.Message) -> None:
             )
         else:
             await schedule_close(message.channel, user_id, delay)
-        try:
-            await message.delete()
-        except discord.HTTPException:
-            pass
         return
     # Any other message from staff keeps the conversation alive.
     await cancel_scheduled_close(message.channel)
+    if lower == "&alert":
+        alerts = config["modmail_alerts"].setdefault(str(message.channel.id), [])
+        if message.author.id in alerts:
+            alerts.remove(message.author.id)
+            state = "will no longer be pinged"
+        else:
+            alerts.append(message.author.id)
+            state = "will now be pinged"
+        save()
+        await message.channel.send(
+            f"{message.author.mention} {state} whenever the user replies."
+        )
+        return
     if lower == "&id":
         await message.channel.send(f"User ID:\n```\n{user_id}\n```")
-        try:
-            await message.delete()
-        except discord.HTTPException:
-            pass
         return
     if lower.startswith("&reply "):
         reply = content[7:].strip()
@@ -432,7 +451,7 @@ async def handle_staff(message: discord.Message) -> None:
     await message.channel.send(embed=embed)
     if not delivered:
         await message.channel.send(
-            "⚠️ Couldn't DM the user — they may have DMs closed or left the server."
+            "Couldn't DM the user — they may have DMs closed or left the server."
         )
     try:
         await message.delete()  # keep the channel clean — the embed is the record
@@ -478,7 +497,7 @@ def _transcript_parts(items: list) -> list[tuple[str, list[discord.Attachment]]]
             if buffer:
                 parts.append((buffer, []))
                 buffer = ""
-            parts.append((f"📎 From {author}:", [attachment]))
+            parts.append((f"From {author}:", [attachment]))
     if buffer:
         parts.append((buffer, []))
     return parts or [("(no messages)", [])]
@@ -492,12 +511,12 @@ async def _transcript_files(
     notes: list[str] = []
     for attachment in attachments:
         if attachment.size > limit:
-            notes.append(f"⚠️ {attachment.filename} is too large to copy into the transcript.")
+            notes.append(f"{attachment.filename} is too large to copy into the transcript.")
             continue
         try:
             data = await attachment.read()
         except discord.HTTPException:
-            notes.append(f"⚠️ Couldn't copy {attachment.filename} into the transcript.")
+            notes.append(f"Couldn't copy {attachment.filename} into the transcript.")
             continue
         files.append(
             discord.File(
@@ -512,6 +531,8 @@ async def _transcript_files(
 async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
     # This close replaces any scheduled one.
     if config["modmail_closes"].pop(str(channel.id), None) is not None:
+        save()
+    if config["modmail_alerts"].pop(str(channel.id), None) is not None:
         save()
     guild = channel.guild
     member = guild.get_member(int(user_id))
@@ -558,7 +579,7 @@ async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
                 )
         except discord.HTTPException as e:
             # Keep the channel so the conversation isn't lost when logging fails.
-            await channel.send(f"⚠️ Couldn't save the transcript to the log forum: {e}")
+            await channel.send(f"Couldn't save the transcript to the log forum: {e}")
             return
 
     config["modmails"].pop(str(user_id), None)
@@ -598,6 +619,7 @@ async def process_scheduled_closes(bot: discord.Client) -> None:
                 continue  # transient — retry next tick
         if channel is None:
             config["modmail_closes"].pop(channel_id, None)
+            config["modmail_alerts"].pop(channel_id, None)
             if config["modmails"].get(user_id) == int(channel_id):
                 config["modmails"].pop(user_id, None)
             changed = True
@@ -761,6 +783,6 @@ class ModmailSetupView(discord.ui.View):
             else " No panel channel selected — users can still DM the bot."
         )
         await interaction.edit_original_response(
-            content=f"✅ Modmail saved!{where} Category **{CATEGORY_NAME}** is visible to {mod_role.mention} only.",
+            content=f"Modmail saved!{where} Category **{CATEGORY_NAME}** is visible to {mod_role.mention} only.",
             view=None,
         )

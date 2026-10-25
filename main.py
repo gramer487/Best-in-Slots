@@ -350,16 +350,16 @@ async def openthread(interaction: discord.Interaction, userid: str) -> None:
         await modmail.announce_new_channel(channel, target)
     try:
         await target.send(
-            "📨 A moderator would like to speak with you. "
+            "A moderator would like to speak with you. "
             "Reply to this DM and your message will reach the staff team."
         )
         dm_note = ""
     except discord.HTTPException:
-        dm_note = "\n⚠️ Couldn't DM them — they may have DMs closed."
+        dm_note = "\nCouldn't DM them — they may have DMs closed."
     if created:
-        result = f"✅ Opened a modmail with {target.name} ({target.id}): {channel.mention}"
+        result = f"Opened a modmail with {target.name} ({target.id}): {channel.mention}"
     else:
-        result = f"ℹ️ A modmail with {target.name} ({target.id}) is already open: {channel.mention}"
+        result = f"A modmail with {target.name} ({target.id}) is already open: {channel.mention}"
     await interaction.followup.send(result + dm_note, ephemeral=True)
 
 
