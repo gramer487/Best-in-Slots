@@ -20,6 +20,8 @@ from modmail import ModmailCloseView, ModmailPanelView
 from suggestions import weapon_autocomplete
 from views import (
     LfgControlView,
+    LfgPanelView,
+    RolePanelView,
     SetupMenuView,
     build_status_embed,
     handle_lfg_reaction,
@@ -75,19 +77,22 @@ async def ensure_panels(channel, guild) -> None:
 
 @bot.event
 async def on_ready():
+    global _lfg_panels_posted
+    guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
+    channel = guild.get_channel(config["channel_id"]) if guild and config["channel_id"] else None
     # Persistent views must be registered after every restart or their buttons die.
     bot.add_view(ModmailPanelView())
     bot.add_view(ModmailCloseView())
     bot.add_view(LfgControlView())
+    if guild is not None:
+        bot.add_view(RolePanelView(guild))
+    bot.add_view(LfgPanelView())
     applications.register_views(bot)
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching, name="do /suggestion for BiS req"
         )
     )
-    global _lfg_panels_posted
-    guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
-    channel = guild.get_channel(config["channel_id"]) if guild and config["channel_id"] else None
     if channel is None:
         print("LFG channel not configured — fill in config.json or run /setup.")
     else:
@@ -99,7 +104,11 @@ async def on_ready():
                 await ensure_panels(channel, guild)
             except discord.Forbidden:
                 print("Can't post panels in the LFG channel — check the bot's permissions there.")
-        await refresh_status(channel)
+        try:
+            await refresh_status(channel)
+        except Exception as e:
+            # A bad world state response must not abort the rest of the startup.
+            print(f"Initial world state refresh failed: {e}")
     try:
         if bot.guilds:
             for g in bot.guilds:
@@ -211,25 +220,30 @@ async def refresh_status(channel) -> dict | None:
 async def status_task():
     """Refresh the status embed, then sleep until the next arbitration/cascade change."""
     while not bot.is_closed():
-        guild = bot.get_guild(config["guild_id"])
-        channel = guild.get_channel(config["channel_id"]) if guild else None
-        if channel is None:
-            await asyncio.sleep(60)  # not configured yet
-            continue
-        data = await refresh_status(channel)
-        if data is None:
-            await asyncio.sleep(60)  # fetch failed — retry soon
-            continue
-        # Wake just after the earliest expiry: the arbitration rolls over hourly and
-        # the cascade flag flips when its mission expires. The 10-minute cap catches
-        # cascades that appear while none is live.
-        now = dt.datetime.now(dt.timezone.utc)
-        wake_at = now + dt.timedelta(minutes=10)
-        if data.get("arbitration"):
-            wake_at = min(wake_at, data["arbitration"]["rotates_at"])
-        if data.get("sp_cascade"):
-            wake_at = min(wake_at, data["sp_cascade"]["expiry"])
-        await asyncio.sleep(max(30, (wake_at - now).total_seconds() + 10))
+        try:
+            guild = bot.get_guild(config["guild_id"])
+            channel = guild.get_channel(config["channel_id"]) if guild else None
+            if channel is None:
+                await asyncio.sleep(60)  # not configured yet
+                continue
+            data = await refresh_status(channel)
+            if data is None:
+                await asyncio.sleep(60)  # fetch failed — retry soon
+                continue
+            # Wake just after the earliest expiry: the arbitration rolls over hourly and
+            # the cascade flag flips when its mission expires. The 10-minute cap catches
+            # cascades that appear while none is live.
+            now = dt.datetime.now(dt.timezone.utc)
+            wake_at = now + dt.timedelta(minutes=10)
+            if data.get("arbitration"):
+                wake_at = min(wake_at, data["arbitration"]["rotates_at"])
+            if data.get("sp_cascade"):
+                wake_at = min(wake_at, data["sp_cascade"]["expiry"])
+            await asyncio.sleep(max(30, (wake_at - now).total_seconds() + 10))
+        except Exception as e:
+            # Never let a bad world state response kill the updater for good.
+            print(f"World state updater failed: {e}")
+            await asyncio.sleep(60)
 
 
 @bot.event
