@@ -24,8 +24,9 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    starts a DM conversation: the bot asks the questions one at a time (multiple choice uses
    a dropdown), shows a summary and asks for confirmation, then posts the answers to the
    review channel. The submission also gets a private thread with the same embed and
-   **Approve**/**Deny** buttons (plus ✅/❌ reactions). A decision updates both embeds, DMs
-   the applicant and locks/archives the thread.
+   **Approve**/**Deny** buttons (plus ✅/❌ reactions). A decision edits the in-thread embed
+   to say approved or denied and who decided, deletes the post in the review channel, DMs
+   the applicant and locks/archives the thread, which stays available with its history.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. Restarting the bot does not clear the channel: the panels are reused when they
@@ -47,7 +48,7 @@ or `&close 1h` schedules the close instead: the opener is DM'd 10 minutes before
 and any new message from either side cancels it. `&alert` toggles a ping for the moderator
 who types it whenever the user replies in that mail. `&id` prints the opener's ID in a copyable
 code block, and `/openthread <userid>` (moderators only) opens a modmail from the staff side
-and DMs the user. Setup fields:
+and DMs the user; pass `ephemeral: false` to make the result visible to the channel. Setup fields:
 panel channel (optional), roles pinged for new modmail, the moderator role, and the log forum
 (optional).
 
@@ -104,7 +105,9 @@ panel channel (optional), roles pinged for new modmail, the moderator role, and 
      dropdown). **Manage applications** edits or removes existing ones. Saving an
      application posts its Apply panel; changing the post channel moves all panels.
 
-Re-running the LFG setup deletes the old panels and posts fresh ones.
+`/setup` is ephemeral by default; pass `ephemeral: false` to show the panel in the channel.
+Every setup page stays admin-only either way. Re-running the LFG setup deletes the old
+panels and posts fresh ones.
 
 ## Recommended channel permissions
 
@@ -135,6 +138,7 @@ tells them to open their DMs if it can't send the first question.
 
 - `main.py` — bot wiring, thread expiry loop, message cleanup, `/setup` command.
 - `views.py` — all UI: role buttons, LFG form + thread controls, setup pages, status embed.
+- `permissions.py` — admin check shared by all `/setup` pages.
 - `modmail.py` — modmail panel, category/channel creation, DM relay, `&reply`/`&close`,
   transcript logging.
 - `suggestions.py` — `/suggestion` weapon lookup/autocomplete and its setup page.

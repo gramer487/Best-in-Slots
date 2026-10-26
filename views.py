@@ -9,6 +9,7 @@ import discord
 from applications import ApplicationsSetupView
 from config import config, save
 from modmail import ModmailSetupView
+from permissions import AdminOnlyView
 from suggestions import SuggestionSetupView
 
 PANEL_INTRO = "Pick a role to ping, how many players you need and for how long — then hit **Post LFG**.\n\n"
@@ -575,7 +576,7 @@ class NoteModal(discord.ui.Modal, title="LFG note"):
         await interaction.response.edit_message(content=PANEL_INTRO + self.parent_view.summary())
 
 
-class SetupMenuView(discord.ui.View):
+class SetupMenuView(AdminOnlyView):
     """First /setup page: pick which system to configure."""
 
     def __init__(self, guild: discord.Guild):
@@ -618,7 +619,7 @@ class SetupState:
         self.admin_role: discord.Role | None = None
 
 
-class SetupChannelView(discord.ui.View):
+class SetupChannelView(AdminOnlyView):
     """Setup page 1: LFG channel, pingable roles and the admin role."""
 
     def __init__(self, state: SetupState, guild: discord.Guild):
@@ -689,7 +690,7 @@ class SetupChannelView(discord.ui.View):
         )
 
 
-class SetupRolesView(discord.ui.View):
+class SetupRolesView(AdminOnlyView):
     """Setup page 2: the three role-button roles, then save & post the panels."""
 
     def __init__(self, state: SetupState, guild: discord.Guild):

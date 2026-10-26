@@ -8,6 +8,7 @@ from pathlib import Path
 import discord
 
 from config import config, save
+from permissions import AdminOnlyView
 
 WEAPONS_PATH = Path(__file__).with_name("weapons.json")
 
@@ -49,7 +50,7 @@ def resolve_weapon(value: str) -> tuple[str, dict] | None:
     return None
 
 
-class SuggestionSetupView(discord.ui.View):
+class SuggestionSetupView(AdminOnlyView):
     """Setup page: suggestion channel and the role pinged for new suggestions."""
 
     def __init__(self, guild: discord.Guild):

@@ -15,6 +15,7 @@ import re
 import discord
 
 from config import config, save
+from permissions import AdminOnlyView
 
 CATEGORY_NAME = "Modmail"
 REPLY_PREFIX = "Reply from Moderator: "
@@ -638,7 +639,7 @@ async def process_scheduled_closes(bot: discord.Client) -> None:
         save()
 
 
-class ModmailSetupView(discord.ui.View):
+class ModmailSetupView(AdminOnlyView):
     """Setup page: panel channel, ping roles, moderator role and log forum."""
 
     def __init__(self, guild: discord.Guild):

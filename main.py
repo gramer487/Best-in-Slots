@@ -13,6 +13,7 @@ from discord.ext import commands, tasks
 
 import applications
 import modmail
+import permissions
 import suggestions
 from config import config, save
 from modmail import ModmailCloseView, ModmailPanelView
@@ -287,13 +288,9 @@ async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
 
 
 @bot.tree.command(name="setup", description="Open the bot setup panel")
-async def setup(interaction: discord.Interaction):
-    admin_role = (
-        interaction.guild.get_role(config["admin_role_id"]) if config["admin_role_id"] else None
-    )
-    is_admin = interaction.user.guild_permissions.administrator
-    has_admin_role = admin_role is not None and admin_role in interaction.user.roles
-    if not is_admin and not has_admin_role:
+@app_commands.describe(ephemeral="Only you can see the setup panel (default: yes)")
+async def setup(interaction: discord.Interaction, ephemeral: bool = True):
+    if not permissions.is_admin(interaction.user):
         await interaction.response.send_message(
             "You need the Administrator permission or the configured admin role to use this.",
             ephemeral=True,
@@ -302,7 +299,7 @@ async def setup(interaction: discord.Interaction):
     await interaction.response.send_message(
         "**Setup** — what do you want to configure?",
         view=SetupMenuView(interaction.guild),
-        ephemeral=True,
+        ephemeral=ephemeral,
     )
 
 
@@ -367,8 +364,13 @@ async def suggestion(
 
 
 @bot.tree.command(name="openthread", description="Open a modmail with a user")
-@app_commands.describe(userid="ID of the user to contact")
-async def openthread(interaction: discord.Interaction, userid: str) -> None:
+@app_commands.describe(
+    userid="ID of the user to contact",
+    ephemeral="Only you can see the result (default: yes)",
+)
+async def openthread(
+    interaction: discord.Interaction, userid: str, ephemeral: bool = True
+) -> None:
     moderator = interaction.user if isinstance(interaction.user, discord.Member) else None
     if interaction.guild is None or moderator is None or not modmail.is_moderator(moderator):
         await interaction.response.send_message(
@@ -378,9 +380,11 @@ async def openthread(interaction: discord.Interaction, userid: str) -> None:
     try:
         target_id = int(userid.strip())
     except ValueError:
-        await interaction.response.send_message("That isn't a valid user ID.", ephemeral=True)
+        await interaction.response.send_message(
+            "That isn't a valid user ID.", ephemeral=ephemeral
+        )
         return
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=ephemeral)
     guild = interaction.guild
     target = guild.get_member(target_id)
     if target is None:
@@ -390,16 +394,19 @@ async def openthread(interaction: discord.Interaction, userid: str) -> None:
             target = None
         except discord.HTTPException:
             await interaction.followup.send(
-                "Couldn't look that user up — try again.", ephemeral=True
+                "Couldn't look that user up — try again.", ephemeral=ephemeral
             )
             return
     if target is None:
-        await interaction.followup.send("That user isn't in the server.", ephemeral=True)
+        await interaction.followup.send(
+            "That user isn't in the server.", ephemeral=ephemeral
+        )
         return
     channel, created = await modmail.ensure_modmail_channel(guild, target)
     if channel is None:
         await interaction.followup.send(
-            "Modmail isn't configured yet. Ask an admin to run `/setup`.", ephemeral=True
+            "Modmail isn't configured yet. Ask an admin to run `/setup`.",
+            ephemeral=ephemeral,
         )
         return
     if created:
@@ -416,7 +423,7 @@ async def openthread(interaction: discord.Interaction, userid: str) -> None:
         result = f"Opened a modmail with {target.name} ({target.id}): {channel.mention}"
     else:
         result = f"A modmail with {target.name} ({target.id}) is already open: {channel.mention}"
-    await interaction.followup.send(result + dm_note, ephemeral=True)
+    await interaction.followup.send(result + dm_note, ephemeral=ephemeral)
 
 
 @bot.tree.error

@@ -10,6 +10,7 @@ import discord
 
 import modmail
 from config import config, save
+from permissions import AdminOnlyView
 
 APPLY_PREFIX = "apply:"
 REVIEW_APPROVE_ID = "application_approve"
@@ -542,15 +543,25 @@ class ApplicationReviewView(discord.ui.View):
                 channel = await guild.fetch_channel(submission["review_channel_id"])
             except discord.HTTPException:
                 channel = None
-        targets = []
-        if channel is not None:
-            targets.append((channel, submission["channel_message_id"]))
+        # The in-thread copy is the lasting record; the post in the review channel is
+        # removed so decided applications don't pile up. Deleting the message a thread
+        # was started from only orphans the thread — it stays archived with its messages.
+        record_updated = False
         if thread is not None:
-            targets.append((thread, submission["thread_message_id"]))
-        for where, message_id in targets:
             try:
-                message = await where.fetch_message(message_id)
+                message = await thread.fetch_message(submission["thread_message_id"])
                 await message.edit(embeds=embeds, view=ApplicationReviewView(disabled=True))
+                record_updated = True
+            except discord.HTTPException:
+                pass
+        if channel is not None:
+            try:
+                message = await channel.fetch_message(submission["channel_message_id"])
+                if record_updated:
+                    await message.delete()
+                else:
+                    # No usable thread copy — keep the decision visible here instead.
+                    await message.edit(embeds=embeds, view=ApplicationReviewView(disabled=True))
             except discord.HTTPException:
                 pass
         dm_failed = False
@@ -599,7 +610,7 @@ def register_views(bot: discord.Client) -> None:
 # --------------------------------------------------------------------------- /setup pages
 
 
-class ApplicationsSetupView(discord.ui.View):
+class ApplicationsSetupView(AdminOnlyView):
     """Applications setup: channels, create, manage."""
 
     def __init__(self, guild: discord.Guild):
@@ -737,7 +748,7 @@ class ApplicationsSetupView(discord.ui.View):
         )
 
 
-class ApplicationBuilderView(discord.ui.View):
+class ApplicationBuilderView(AdminOnlyView):
     """Create/edit draft held in memory until Save."""
 
     def __init__(self, guild: discord.Guild, existing: tuple[str, dict] | None = None):
@@ -1008,7 +1019,7 @@ class RemoveQuestionModal(discord.ui.Modal, title="Remove question"):
         await interaction.response.edit_message(content=self.builder.summary(), view=self.builder)
 
 
-class ManageApplicationsView(discord.ui.View):
+class ManageApplicationsView(AdminOnlyView):
     def __init__(self, guild: discord.Guild):
         super().__init__(timeout=1800)
         self.guild = guild
@@ -1047,7 +1058,7 @@ class ManageApplicationsView(discord.ui.View):
         )
 
 
-class ApplicationManageView(discord.ui.View):
+class ApplicationManageView(AdminOnlyView):
     def __init__(self, guild: discord.Guild, app_id: str):
         super().__init__(timeout=1800)
         self.guild = guild
@@ -1099,7 +1110,7 @@ class ApplicationManageView(discord.ui.View):
         )
 
 
-class RemoveApplicationView(discord.ui.View):
+class RemoveApplicationView(AdminOnlyView):
     def __init__(self, guild: discord.Guild, app_id: str):
         super().__init__(timeout=1800)
         self.guild = guild
