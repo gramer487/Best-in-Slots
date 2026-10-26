@@ -29,6 +29,10 @@ _DEFAULTS = {
     "modmail_closes": {},  # str(channel_id) -> {"user_id", "close_at": iso, "warned": bool}
     "modmail_alerts": {},  # str(modmail_channel_id) -> [moderator ids pinged on user replies]
     "modmail_history": {},  # str(user_id) -> [{"thread": forum thread id, "title": ...}]
+    "applications_post_channel_id": None,  # public channel holding the Apply panels
+    "applications_review_channel_id": None,  # staff channel receiving submissions + threads
+    "applications": {},  # str(app_id) -> app definition + panel_message_id
+    "application_submissions": {},  # str(thread_id) -> submission record + status
 }
 
 config = copy.deepcopy(_DEFAULTS)

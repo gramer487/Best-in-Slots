@@ -1,4 +1,4 @@
-"""LFG bot: self-role panel + LFG posts with threads (1h expiry) in a locked channel."""
+"""LFG bot: self-role panel + LFG posts with threads (2h expiry) in a locked channel."""
 
 import asyncio
 import datetime as dt
@@ -11,12 +11,20 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+import applications
 import modmail
 import suggestions
 from config import config, save
 from modmail import ModmailCloseView, ModmailPanelView
 from suggestions import weapon_autocomplete
-from views import SetupMenuView, build_status_embed, post_panels
+from views import (
+    LfgControlView,
+    SetupMenuView,
+    build_status_embed,
+    handle_lfg_reaction,
+    post_panels,
+    refresh_lfg_messages,
+)
 from worldstate import fetch_worldstate
 
 intents = discord.Intents.default()
@@ -24,6 +32,7 @@ intents.message_content = True  # needed to read "$close" inside threads
 intents.members = True  # keep the member cache populated for modmail lookups
 bot = commands.Bot(command_prefix=None, intents=intents)
 _status_task: asyncio.Task | None = None
+_lfg_panels_posted = False
 
 
 def get_token() -> str:
@@ -38,34 +47,57 @@ def get_token() -> str:
     raise SystemExit("Put DISCORD_TOKEN=your-token in the .env file next to main.py.")
 
 
+async def ensure_panels(channel, guild) -> None:
+    """Keep the panels that survived a restart; repost them only if they were deleted."""
+    existing = []
+    for key in ("panel_message_id", "lfg_message_id"):
+        message = None
+        if config[key]:
+            try:
+                message = await channel.fetch_message(config[key])
+            except discord.HTTPException:
+                message = None
+        existing.append(message)
+    if all(existing):
+        return
+    for message in existing:
+        if message is not None:
+            try:
+                await message.delete()
+            except discord.HTTPException:
+                pass
+    role_message, lfg_message = await post_panels(channel, guild)
+    config["panel_message_id"] = role_message.id
+    config["lfg_message_id"] = lfg_message.id
+    save()
+
+
 @bot.event
 async def on_ready():
     # Persistent views must be registered after every restart or their buttons die.
     bot.add_view(ModmailPanelView())
     bot.add_view(ModmailCloseView())
+    bot.add_view(LfgControlView())
+    applications.register_views(bot)
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching, name="do /suggestion for BiS req"
         )
     )
+    global _lfg_panels_posted
     guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
     channel = guild.get_channel(config["channel_id"]) if guild and config["channel_id"] else None
     if channel is None:
         print("LFG channel not configured — fill in config.json or run /setup.")
     else:
-        # Fresh start: clear the whole channel, then repost the panels.
-        try:
-            await channel.purge(limit=None)
-        except discord.HTTPException:
-            pass
-        try:
-            role_message, lfg_message = await post_panels(channel, guild)
-        except discord.Forbidden:
-            print("Can't post panels in the LFG channel — check the bot's permissions there.")
-        else:
-            config["panel_message_id"] = role_message.id
-            config["lfg_message_id"] = lfg_message.id
-            save()
+        if not _lfg_panels_posted:
+            # Leave the channel alone on restart: existing LFG posts and their threads
+            # stay, and the panels are only reposted when they're actually missing.
+            _lfg_panels_posted = True
+            try:
+                await ensure_panels(channel, guild)
+            except discord.Forbidden:
+                print("Can't post panels in the LFG channel — check the bot's permissions there.")
         await refresh_status(channel)
     try:
         if bot.guilds:
@@ -94,7 +126,7 @@ async def on_ready():
 
 @tasks.loop(minutes=1)
 async def expire_threads():
-    """Delete LFG threads 1 hour after creation, or at their scheduled $close time."""
+    """Delete LFG threads 2 hours after creation, or at their scheduled $close time."""
     guild = bot.get_guild(config["guild_id"])
     if guild is None:
         return
@@ -111,7 +143,7 @@ async def expire_threads():
         delete_at = (
             dt.datetime.fromisoformat(entry["delete_at"]) if entry.get("delete_at") else None
         )
-        due = (delete_at is not None and now >= delete_at) or now - created >= dt.timedelta(hours=1)
+        due = (delete_at is not None and now >= delete_at) or now - created >= dt.timedelta(hours=2)
         if not due:
             continue
         thread = channel.get_thread(int(thread_id))
@@ -129,6 +161,14 @@ async def expire_threads():
                 pass
             except discord.HTTPException:
                 continue  # transient failure — keep the entry and retry next tick
+        # The public post is dead once its thread is gone — clean it up as well.
+        post_channel = guild.get_channel(entry.get("post_channel_id") or 0)
+        if post_channel is not None and entry.get("post_message_id"):
+            try:
+                post = await post_channel.fetch_message(entry["post_message_id"])
+                await post.delete()
+            except discord.HTTPException:
+                pass
         del config["threads"][thread_id]
         changed = True
     if changed:
@@ -154,7 +194,7 @@ async def refresh_status(channel) -> dict | None:
         try:
             message = await channel.fetch_message(config["status_message_id"])
         except discord.NotFound:
-            message = None  # deleted (e.g. by the restart purge) — repost
+            message = None  # deleted — repost
     try:
         if message is None:
             message = await channel.send(embed=build_status_embed(data))
@@ -197,6 +237,9 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
     if message.guild is None:
+        # An application in progress owns the DM until it's submitted or cancelled.
+        if await applications.handle_dm(message):
+            return
         await modmail.handle_dm(message, bot.get_guild(config["guild_id"]))
         return
     if message.channel.id == config["channel_id"] and isinstance(message.channel, discord.TextChannel):
@@ -225,9 +268,22 @@ async def on_message(message: discord.Message):
         config["threads"][thread_id] = entry
         save()
         await message.channel.send("🗑️ This thread will be deleted in 10 minutes.")
+        await refresh_lfg_messages(bot, message.channel.id, entry)
         return
     if str(message.channel.id) in {str(cid) for cid in config["modmails"].values()}:
         await modmail.handle_staff(message)
+
+
+@bot.event
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    """The LFG host marks a player by reacting ✅ to their message in the thread."""
+    await handle_lfg_reaction(bot, payload, removed=False)
+
+
+@bot.event
+async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
+    """Removing the ✅ un-marks the player and gives the slot back."""
+    await handle_lfg_reaction(bot, payload, removed=True)
 
 
 @bot.tree.command(name="setup", description="Open the bot setup panel")

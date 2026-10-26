@@ -6,6 +6,7 @@ import datetime as dt
 
 import discord
 
+from applications import ApplicationsSetupView
 from config import config, save
 from modmail import ModmailSetupView
 from suggestions import SuggestionSetupView
@@ -14,13 +15,17 @@ PANEL_INTRO = "Pick a role to ping, how many players you need and for how long �
 
 # Hardcoded per-role player limits: this role allows up to 5, everything else 3.
 FIVE_PLAYER_ROLE_ID = 1559600840950423632
+REGIONS = ("NA", "EU", "SA", "AS", "AU")
+LFG_LIFETIME = dt.timedelta(hours=2)
+LFG_CLOSE_DELAY = dt.timedelta(minutes=10)
 
 
-def _summary(role, count, duration, note) -> str:
+def _summary(role, count, duration, region, note) -> str:
     return (
         f"**Role to ping:** {role.name if role else '❌ not set'}\n"
         f"**Players needed:** {count if count else '❌ not set'}\n"
         f"**Duration:** {duration or '❌ not set'}\n"
+        f"**Region:** {region or '❌ not set'}\n"
         f"**Note:** {note or '—'}"
     )
 
@@ -109,13 +114,212 @@ async def post_panels(channel, guild, button_roles=None):
             title="Looking for Group",
             description=(
                 "Click **Start LFG** below to open a form.\n"
-                "Your post will ping a role, open a thread and the thread expires after 1 hour."
+                "Your post will ping a role, open a thread and the thread expires after 2 hours."
             ),
             color=discord.Color.green(),
         ),
         view=LfgPanelView(),
     )
     return role_message, lfg_message
+
+
+def build_lfg_embed(guild: discord.Guild, entry: dict) -> discord.Embed:
+    """The public LFG post. Rebuilt whenever the player count or lineup changes."""
+    role = guild.get_role(entry["role_id"]) if entry.get("role_id") else None
+    embed = discord.Embed(
+        title=f"LFG — {role.name}" if role else "LFG", color=discord.Color.green()
+    )
+    if role is not None:
+        embed.add_field(name="Role", value=role.mention, inline=True)
+    needed = "Full" if entry.get("full") else entry.get("players_needed", "—")
+    embed.add_field(name="Players needed", value=str(needed), inline=True)
+    embed.add_field(name="Duration", value=entry.get("duration") or "—", inline=True)
+    # Mentions render as clickable names; allowed_mentions keeps edits from pinging.
+    embed.add_field(name="Host", value=f"<@{entry['host']}>", inline=True)
+    embed.add_field(name="Region", value=entry.get("region") or "—", inline=True)
+    player_ids = [entry["host"], *entry.get("players", [])]
+    players = ", ".join(f"<@{pid}>" for pid in player_ids)
+    embed.add_field(name="Players", value=players[:1024], inline=False)
+    if entry.get("note"):
+        embed.add_field(name="Note", value=entry["note"], inline=False)
+    created = dt.datetime.fromisoformat(entry["created"])
+    expires = created + LFG_LIFETIME
+    # Discord timestamps render in each viewer's local timezone.
+    embed.add_field(
+        name="Thread expires",
+        value=f"<t:{int(expires.timestamp())}:F> (<t:{int(expires.timestamp())}:R>)",
+        inline=False,
+    )
+    if entry.get("delete_at"):
+        closing = dt.datetime.fromisoformat(entry["delete_at"])
+        embed.add_field(name="Closing", value=f"<t:{int(closing.timestamp())}:R>", inline=False)
+    return embed
+
+
+def build_control_embed(entry: dict) -> discord.Embed:
+    """The owner-only control panel posted inside the LFG thread."""
+    embed = discord.Embed(
+        title="LFG controls",
+        description=(
+            "Only the thread owner can use these buttons.\n"
+            "React ✅ to a player's message to mark them as joined; remove the reaction to undo it."
+        ),
+        color=discord.Color.blurple(),
+    )
+    embed.add_field(
+        name="Players needed",
+        value="Full" if entry.get("full") else str(entry.get("players_needed", "—")),
+        inline=True,
+    )
+    embed.add_field(name="Region", value=entry.get("region") or "—", inline=True)
+    players = ", ".join(f"<@{pid}>" for pid in entry.get("players", [])) or "—"
+    embed.add_field(name="Marked players", value=players[:1024], inline=False)
+    if entry.get("delete_at"):
+        closing = dt.datetime.fromisoformat(entry["delete_at"])
+        embed.add_field(name="Closing", value=f"<t:{int(closing.timestamp())}:R>", inline=False)
+    return embed
+
+
+async def refresh_lfg_messages(bot, thread_id, entry: dict) -> None:
+    """Re-render the public LFG post and the in-thread control panel after a change."""
+    guild = bot.get_guild(config["guild_id"])
+    if guild is None:
+        return
+    channel = guild.get_channel(entry.get("post_channel_id") or 0)
+    if channel is not None and entry.get("post_message_id"):
+        try:
+            message = await channel.fetch_message(entry["post_message_id"])
+            await message.edit(
+                embed=build_lfg_embed(guild, entry),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            pass
+    thread = guild.get_channel(int(thread_id))
+    if thread is None:
+        try:
+            thread = await guild.fetch_channel(int(thread_id))
+        except discord.HTTPException:
+            thread = None
+    if isinstance(thread, discord.Thread) and entry.get("control_message_id"):
+        try:
+            panel = await thread.fetch_message(entry["control_message_id"])
+            await panel.edit(embed=build_control_embed(entry))
+        except discord.HTTPException:
+            pass
+
+
+class LfgControlView(discord.ui.View):
+    """Persistent thread-owner controls posted at the top of each LFG thread."""
+
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    async def _owner_entry(self, interaction: discord.Interaction) -> dict | None:
+        entry = config["threads"].get(str(interaction.channel_id))
+        if not isinstance(entry, dict) or not isinstance(interaction.channel, discord.Thread):
+            await interaction.response.send_message(
+                "These controls only work inside an LFG thread.", ephemeral=True
+            )
+            return None
+        if interaction.user.id != entry.get("host"):
+            await interaction.response.send_message(
+                "Only the thread owner can use these controls.", ephemeral=True
+            )
+            return None
+        return entry
+
+    async def _finish(self, interaction, entry, text) -> None:
+        save()
+        await refresh_lfg_messages(interaction.client, interaction.channel_id, entry)
+        await interaction.followup.send(text, ephemeral=True)
+
+    @discord.ui.button(label="Need one fewer", style=discord.ButtonStyle.grey, custom_id="lfg_dec")
+    async def dec(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        entry = await self._owner_entry(interaction)
+        if entry is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        entry["players_needed"] = max(0, entry.get("players_needed", 0) - 1)
+        if entry["players_needed"] == 0:
+            entry["full"] = True
+        await self._finish(interaction, entry, f"Players needed: {entry['players_needed']}.")
+
+    @discord.ui.button(label="Need one more", style=discord.ButtonStyle.grey, custom_id="lfg_inc")
+    async def inc(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        entry = await self._owner_entry(interaction)
+        if entry is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        entry["players_needed"] = entry.get("players_needed", 0) + 1
+        entry["full"] = False
+        await self._finish(interaction, entry, f"Players needed: {entry['players_needed']}.")
+
+    @discord.ui.button(label="Mark as full", style=discord.ButtonStyle.green, custom_id="lfg_full")
+    async def full(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        entry = await self._owner_entry(interaction)
+        if entry is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        entry["players_needed"] = 0
+        entry["full"] = True
+        await self._finish(interaction, entry, "Marked as full.")
+
+    @discord.ui.button(label="Close thread", style=discord.ButtonStyle.red, custom_id="lfg_close")
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        entry = await self._owner_entry(interaction)
+        if entry is None:
+            return
+        await interaction.response.defer(ephemeral=True)
+        if entry.get("delete_at"):
+            await interaction.followup.send("This thread is already closing.", ephemeral=True)
+            return
+        entry["delete_at"] = (dt.datetime.now(dt.timezone.utc) + LFG_CLOSE_DELAY).isoformat()
+        save()
+        try:
+            await interaction.channel.send("This thread will be deleted in 10 minutes.")
+        except discord.HTTPException:
+            pass
+        await refresh_lfg_messages(interaction.client, interaction.channel_id, entry)
+        await interaction.followup.send(
+            "This thread will be deleted in 10 minutes.", ephemeral=True
+        )
+
+
+async def handle_lfg_reaction(bot, payload: discord.RawReactionActionEvent, *, removed: bool) -> None:
+    """Let the host mark a player by adding/removing ✅ on that player's thread message."""
+    if str(payload.emoji) != "✅" or payload.guild_id != config["guild_id"]:
+        return
+    entry = config["threads"].get(str(payload.channel_id))
+    if not isinstance(entry, dict) or "players_needed" not in entry:
+        return
+    if payload.user_id != entry.get("host"):
+        return
+    channel = bot.get_channel(payload.channel_id)
+    if not isinstance(channel, discord.Thread):
+        return
+    try:
+        message = await channel.fetch_message(payload.message_id)
+    except discord.HTTPException:
+        return
+    if message.author.bot or message.author.id == entry.get("host"):
+        return
+    players = entry.setdefault("players", [])
+    if removed:
+        if message.author.id not in players:
+            return
+        players.remove(message.author.id)
+        entry["players_needed"] = entry.get("players_needed", 0) + 1
+        entry["full"] = False
+    else:
+        if message.author.id in players:
+            return
+        players.append(message.author.id)
+        entry["players_needed"] = max(0, entry.get("players_needed", 0) - 1)
+        if entry["players_needed"] == 0:
+            entry["full"] = True
+    save()
+    await refresh_lfg_messages(bot, payload.channel_id, entry)
 
 
 def build_status_embed(data: dict) -> discord.Embed:
@@ -154,13 +358,14 @@ def build_status_embed(data: dict) -> discord.Embed:
 
 
 class LfgSetupView(discord.ui.View):
-    """Ephemeral LFG form: role to ping, player count, duration, optional note."""
+    """Ephemeral LFG form: role to ping, player count, duration, region, optional note."""
 
     def __init__(self, roles: list[discord.Role]):
         super().__init__(timeout=600)
         self.role: discord.Role | None = None
         self.count: int | None = None
         self.duration: str | None = None
+        self.region: str | None = None
         self.note: str | None = None
 
         self.role_select = discord.ui.Select(
@@ -193,8 +398,16 @@ class LfgSetupView(discord.ui.View):
         self.duration_select.callback = self.on_duration
         self.add_item(self.duration_select)
 
+        self.region_select = discord.ui.Select(
+            placeholder="Which region are you playing in?",
+            options=[discord.SelectOption(label=region, value=region) for region in REGIONS],
+            row=3,
+        )
+        self.region_select.callback = self.on_region
+        self.add_item(self.region_select)
+
     def summary(self) -> str:
-        return _summary(self.role, self.count, self.duration, self.note)
+        return _summary(self.role, self.count, self.duration, self.region, self.note)
 
     def _count_options(self) -> list[discord.SelectOption]:
         max_players = 5 if self.role is not None and self.role.id == FIVE_PLAYER_ROLE_ID else 3
@@ -218,54 +431,83 @@ class LfgSetupView(discord.ui.View):
         self.duration = self.duration_select.values[0]
         await self._refresh(interaction)
 
+    async def on_region(self, interaction: discord.Interaction) -> None:
+        self.region = self.region_select.values[0]
+        await self._refresh(interaction)
+
     async def _refresh(self, interaction: discord.Interaction) -> None:
         # Ephemeral messages can only be edited through the interaction response —
         # plain Message.edit would 404. The view rides along so rebuilt select
         # options (per-role player limit) show up.
         await interaction.response.edit_message(content=PANEL_INTRO + self.summary(), view=self)
 
-    @discord.ui.button(label="Add a note", style=discord.ButtonStyle.grey, emoji="📝", row=3)
+    @discord.ui.button(label="Add a note", style=discord.ButtonStyle.grey, emoji="📝", row=4)
     async def add_note(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await interaction.response.send_modal(NoteModal(view=self))
 
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, row=3)
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, row=4)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         self.stop()
         await interaction.response.delete_message()
 
-    @discord.ui.button(label="Post LFG", style=discord.ButtonStyle.green, row=3)
+    @discord.ui.button(label="Post LFG", style=discord.ButtonStyle.green, row=4)
     async def post(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if self.role is None or self.count is None or self.duration is None:
+        if (
+            self.role is None
+            or self.count is None
+            or self.duration is None
+            or self.region is None
+        ):
             await interaction.response.send_message(
-                "Pick a role, a player count and a duration first.", ephemeral=True
+                "Pick a role, a player count, a duration and a region first.", ephemeral=True
             )
             return
         channel = interaction.guild.get_channel(config["channel_id"])
-        if channel is None:
+        if channel is None or not isinstance(channel, discord.TextChannel):
             await interaction.response.send_message(
                 "The LFG channel isn't configured. Ask an admin to run `/setup`.", ephemeral=True
             )
             return
+        me = interaction.guild.me
+        if me is not None:
+            perms = channel.permissions_for(me)
+            missing = [
+                label
+                for label, allowed in (
+                    ("Send Messages", perms.send_messages),
+                    ("Embed Links", perms.embed_links),
+                    ("Create Public Threads", perms.create_public_threads),
+                    ("Send Messages in Threads", perms.send_messages_in_threads),
+                )
+                if not allowed
+            ]
+            if missing:
+                await interaction.response.send_message(
+                    "I'm missing these permissions in the LFG channel: "
+                    + ", ".join(missing)
+                    + ". Check the channel's permission overwrites for my role.",
+                    ephemeral=True,
+                )
+                return
         created = dt.datetime.now(dt.timezone.utc)
-        expires = created + dt.timedelta(hours=1)
-        embed = discord.Embed(title=f"LFG — {self.role.name}", color=discord.Color.green())
-        embed.add_field(name="Role", value=self.role.mention, inline=True)
-        embed.add_field(name="Players needed", value=str(self.count), inline=True)
-        embed.add_field(name="Duration", value=self.duration, inline=True)
-        # A mention renders as a clickable @name without pinging.
-        embed.add_field(name="Host", value=interaction.user.mention, inline=True)
-        if self.note:
-            embed.add_field(name="Note", value=self.note, inline=False)
-        # Discord timestamps render in each viewer's local timezone.
-        embed.add_field(
-            name="Thread expires",
-            value=f"<t:{int(expires.timestamp())}:F> (<t:{int(expires.timestamp())}:R>)",
-            inline=False,
-        )
+        entry = {
+            "created": created.isoformat(),
+            "host": interaction.user.id,
+            "role_id": self.role.id,
+            "players_needed": self.count,
+            "region": self.region,
+            "duration": self.duration,
+            "note": self.note,
+            "players": [],
+            "full": False,
+            "post_channel_id": channel.id,
+            "post_message_id": None,
+            "control_message_id": None,
+        }
         try:
             message = await channel.send(
                 content=self.role.mention,
-                embed=embed,
+                embed=build_lfg_embed(interaction.guild, entry),
                 allowed_mentions=discord.AllowedMentions(roles=[self.role]),
             )
         except discord.Forbidden:
@@ -273,25 +515,44 @@ class LfgSetupView(discord.ui.View):
                 "I don't have permission to post in the LFG channel.", ephemeral=True
             )
             return
+        except discord.HTTPException as e:
+            await interaction.response.send_message(
+                f"Posting the LFG failed: {e}", ephemeral=True
+            )
+            return
+        entry["post_message_id"] = message.id
         try:
             thread = await message.create_thread(
                 name=f"LFG — {self.role.name} ({self.count} needed)"[:100],
-                auto_archive_duration=60,
+                # Keep the thread visible for its whole two-hour life; 60 minutes would
+                # hide it from the channel list before the bot deletes it.
+                auto_archive_duration=1440,
             )
-        except discord.HTTPException as e:
-            # Surface the real reason (e.g. thread rate limits) instead of a silent failure.
+        except (discord.HTTPException, ValueError) as e:
+            # Don't leave an orphan post with no thread to talk in.
+            try:
+                await message.delete()
+            except discord.HTTPException:
+                pass
             await interaction.response.send_message(
-                f"Posted the LFG, but opening a thread failed: {e}", ephemeral=True
+                f"Couldn't open the thread: {e}. Check that I have **Create Public Threads** "
+                "and **Send Messages in Threads** in the LFG channel.",
+                ephemeral=True,
             )
             return
-        config["threads"][str(thread.id)] = {
-            "created": created.isoformat(),
-            "host": interaction.user.id,  # only they may use $close
-        }
+        panel_note = ""
+        try:
+            panel = await thread.send(embed=build_control_embed(entry), view=LfgControlView())
+            entry["control_message_id"] = panel.id
+        except discord.HTTPException as e:
+            panel_note = f"\nI couldn't post the control panel in the thread: {e}"
+        config["threads"][str(thread.id)] = entry
         save()
         self.clear_items()
         self.stop()
-        await interaction.response.edit_message(content=f"✅ Posted! {thread.jump_url}", view=self)
+        await interaction.response.edit_message(
+            content=f"✅ Posted! {thread.jump_url}{panel_note}", view=self
+        )
 
 
 class NoteModal(discord.ui.Modal, title="LFG note"):
@@ -340,6 +601,13 @@ class SetupMenuView(discord.ui.View):
         await interaction.response.edit_message(
             content="**Suggestion setup** — where suggestion posts go and which role is pinged.",
             view=SuggestionSetupView(interaction.guild),
+        )
+
+    @discord.ui.button(label="Applications", style=discord.ButtonStyle.blurple, emoji="📋", row=0)
+    async def applications(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(
+            content="**Applications setup** — channels, panels and active applications.",
+            view=ApplicationsSetupView(interaction.guild),
         )
 
 
