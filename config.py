@@ -33,6 +33,7 @@ _DEFAULTS = {
     "applications_review_channel_id": None,  # staff channel receiving submissions + threads
     "applications": {},  # str(app_id) -> app definition + panel_message_id
     "application_submissions": {},  # str(thread_id) -> submission record + status
+    "tags": {},  # str(name) -> {"content", "author_id", "created": iso, "uses"}
 }
 
 config = copy.deepcopy(_DEFAULTS)

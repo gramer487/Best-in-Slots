@@ -27,6 +27,10 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    **Approve**/**Deny** buttons (plus ✅/❌ reactions). A decision edits the in-thread embed
    to say approved or denied and who decided, deletes the post in the review channel, DMs
    the applicant and locks/archives the thread, which stays available with its history.
+6. **Tags** — moderators use `/tag create name:test` to store a message behind `.test`;
+   sending a message that starts with `.test` makes the bot post it. `/tag manage` shows a
+   tag's content, creator, creation date and use count with Edit/Rename/Remove buttons,
+   and `/tag list` lists every tag.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. Restarting the bot does not clear the channel: the panels are reused when they
@@ -51,6 +55,20 @@ code block, and `/openthread <userid>` (moderators only) opens a modmail from th
 and DMs the user; pass `ephemeral: false` to make the result visible to the channel. Setup fields:
 panel channel (optional), roles pinged for new modmail, the moderator role, and the log forum
 (optional).
+
+### Tags
+
+`/tag create name:test` opens a modal for the reply text. Only moderators — the configured
+modmail moderator role, or administrators — can create tags. Any message that starts with
+`.test` makes the bot post that text (mentions are disabled, so tag content can't ping).
+Names are case-insensitive, 1-32 characters, and limited to letters, numbers, `-` and `_`.
+`/tag list` shows every tag with its use count. `/tag manage name:test` (existing names
+autocomplete) shows the content, creator, creation date and use count, with **Edit**
+(text modal), **Rename** and **Remove** (with a confirmation) buttons. Only the tag's
+creator or an admin can use those buttons. `/tag manage` and `/tag list` are ephemeral by
+default; pass `ephemeral: false` to show them in the channel. Tags work in normal channels
+and threads, not in DMs or modmail channels, and the `.` must be the first character of the
+message.
 
 ## Setup
 
@@ -142,6 +160,7 @@ tells them to open their DMs if it can't send the first question.
 - `modmail.py` — modmail panel, category/channel creation, DM relay, `&reply`/`&close`,
   transcript logging.
 - `suggestions.py` — `/suggestion` weapon lookup/autocomplete and its setup page.
+- `tags.py` — `/tag` commands, the `.name` trigger and tag management.
 - `applications.py` — application builder, Apply panels, DM questionnaire, submission
   review threads with Approve/Deny.
 - `weapons.json` — weapon list (display names) used by the `/suggestion` autocomplete.

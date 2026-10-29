@@ -15,6 +15,7 @@ import applications
 import modmail
 import permissions
 import suggestions
+import tags
 from config import config, save
 from modmail import ModmailCloseView, ModmailPanelView
 from suggestions import weapon_autocomplete
@@ -34,6 +35,7 @@ intents = discord.Intents.default()
 intents.message_content = True  # needed to read "$close" inside threads
 intents.members = True  # keep the member cache populated for modmail lookups
 bot = commands.Bot(command_prefix=None, intents=intents)
+tags.register(bot)
 _status_task: asyncio.Task | None = None
 _lfg_panels_posted = False
 
@@ -287,6 +289,8 @@ async def on_message(message: discord.Message):
         return
     if str(message.channel.id) in {str(cid) for cid in config["modmails"].values()}:
         await modmail.handle_staff(message)
+        return
+    await tags.handle_message(message)
 
 
 @bot.event

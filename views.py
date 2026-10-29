@@ -505,6 +505,9 @@ class LfgSetupView(discord.ui.View):
             "post_message_id": None,
             "control_message_id": None,
         }
+        # Posting, thread creation and the control panel are several API calls; without
+        # this the interaction token can expire before the final edit (error 10062).
+        await interaction.response.defer()
         try:
             message = await channel.send(
                 content=self.role.mention,
@@ -512,12 +515,12 @@ class LfgSetupView(discord.ui.View):
                 allowed_mentions=discord.AllowedMentions(roles=[self.role]),
             )
         except discord.Forbidden:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "I don't have permission to post in the LFG channel.", ephemeral=True
             )
             return
         except discord.HTTPException as e:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Posting the LFG failed: {e}", ephemeral=True
             )
             return
@@ -535,7 +538,7 @@ class LfgSetupView(discord.ui.View):
                 await message.delete()
             except discord.HTTPException:
                 pass
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Couldn't open the thread: {e}. Check that I have **Create Public Threads** "
                 "and **Send Messages in Threads** in the LFG channel.",
                 ephemeral=True,
@@ -551,7 +554,7 @@ class LfgSetupView(discord.ui.View):
         save()
         self.clear_items()
         self.stop()
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             content=f"✅ Posted! {thread.jump_url}{panel_note}", view=self
         )
 
