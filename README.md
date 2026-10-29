@@ -29,8 +29,8 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    the applicant and locks/archives the thread, which stays available with its history.
 6. **Tags** — moderators use `/tag create name:test` to store a message behind `.test`;
    sending a message that starts with `.test` makes the bot post it. `/tag manage` shows a
-   tag's content, creator, creation date and use count with Edit/Rename/Remove buttons,
-   and `/tag list` lists every tag.
+   tag's content, creator, creation date and use count with Edit/Rename/**Ping mentions**/
+   Remove buttons, and `/tag list` lists every tag.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. Restarting the bot does not clear the channel: the panels are reused when they
@@ -60,15 +60,17 @@ panel channel (optional), roles pinged for new modmail, the moderator role, and 
 
 `/tag create name:test` opens a modal for the reply text. Only moderators — the configured
 modmail moderator role, or administrators — can create tags. Any message that starts with
-`.test` makes the bot post that text (mentions are disabled, so tag content can't ping).
-Names are case-insensitive, 1-32 characters, and limited to letters, numbers, `-` and `_`.
-`/tag list` shows every tag with its use count. `/tag manage name:test` (existing names
-autocomplete) shows the content, creator, creation date and use count, with **Edit**
-(text modal), **Rename** and **Remove** (with a confirmation) buttons. Only the tag's
-creator or an admin can use those buttons. `/tag manage` and `/tag list` are ephemeral by
-default; pass `ephemeral: false` to show them in the channel. Tags work in normal channels
-and threads, not in DMs or modmail channels, and the `.` must be the first character of the
-message.
+`.test` makes the bot post that text. If the stored text contains role or user mentions
+(`<@&id>` or `<@id>`), creation asks whether those mentions should ping when the tag is
+used; the answer is saved with the tag, and the **Ping mentions** button in `/tag manage`
+flips it later. Names are case-insensitive, 1-32 characters, and limited to letters,
+numbers, `-` and `_`. `/tag list` shows every tag with its use count.
+`/tag manage name:test` (existing names autocomplete) shows the content, creator, creation
+date, use count and ping setting, with **Ping mentions**, **Edit** (text modal), **Rename**
+and **Remove** (with a confirmation) buttons. Only the tag's creator or an admin can use
+those buttons. `/tag manage` and `/tag list` are ephemeral by default; pass
+`ephemeral: false` to show them in the channel. Tags work in normal channels and threads,
+not in DMs or modmail channels, and the `.` must be the first character of the message.
 
 ## Setup
 

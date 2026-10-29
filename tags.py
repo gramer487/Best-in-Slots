@@ -13,6 +13,7 @@ import permissions
 from config import config, save
 
 NAME_RE = re.compile(r"[a-z0-9_-]{1,32}")
+MENTION_RE = re.compile(r"<@&(\d+)>|<@!?(\d+)>")
 TRIGGER_PREFIX = "."
 
 
@@ -44,6 +45,11 @@ def build_tag_embed(name: str, entry: dict) -> discord.Embed:
         inline=True,
     )
     embed.add_field(name="Uses", value=str(entry.get("uses", 0)), inline=True)
+    embed.add_field(
+        name="Pings mentions",
+        value="Yes" if entry.get("ping_mentions") else "No",
+        inline=True,
+    )
     return embed
 
 
@@ -54,6 +60,39 @@ async def tag_autocomplete(
     names = [name for name in config["tags"] if current in name]
     names.sort(key=lambda name: (not name.startswith(current), name))
     return [discord.app_commands.Choice(name=name, value=name) for name in names[:25]]
+
+
+def _mentioned_ids(content: str) -> tuple[list[int], list[int]]:
+    """Role and user IDs mentioned in a tag's content."""
+    role_ids: list[int] = []
+    user_ids: list[int] = []
+    for match in MENTION_RE.finditer(content):
+        if match.group(1) is not None:
+            role_ids.append(int(match.group(1)))
+        else:
+            user_ids.append(int(match.group(2)))
+    return list(dict.fromkeys(role_ids)), list(dict.fromkeys(user_ids))
+
+
+async def _post_tag(channel, name: str, entry: dict) -> bool:
+    """Post a tag's content; its mentions ping only if the tag says so."""
+    allowed = discord.AllowedMentions.none()
+    if entry.get("ping_mentions"):
+        role_ids, user_ids = _mentioned_ids(entry["content"])
+        # everyone=False: without it AllowedMentions would also allow @everyone/@here.
+        allowed = discord.AllowedMentions(
+            everyone=False,
+            roles=[discord.Object(id=role_id) for role_id in role_ids],
+            users=[discord.Object(id=user_id) for user_id in user_ids],
+        )
+    try:
+        await channel.send(entry["content"], allowed_mentions=allowed)
+    except discord.HTTPException as e:
+        print(f"Couldn't post tag .{name}: {e}")
+        return False
+    entry["uses"] = entry.get("uses", 0) + 1
+    save()
+    return True
 
 
 async def handle_message(message: discord.Message) -> bool:
@@ -69,16 +108,7 @@ async def handle_message(message: discord.Message) -> bool:
     entry = config["tags"].get(name)
     if entry is None:
         return False
-    try:
-        await message.channel.send(
-            entry["content"], allowed_mentions=discord.AllowedMentions.none()
-        )
-    except discord.HTTPException as e:
-        print(f"Couldn't post tag .{name}: {e}")
-        return False
-    entry["uses"] = entry.get("uses", 0) + 1
-    save()
-    return True
+    return await _post_tag(message.channel, name, entry)
 
 
 tag_group = app_commands.Group(name="tag", description="Create, manage and list tags")
@@ -200,8 +230,18 @@ class TagContentModal(discord.ui.Modal):
                 "author_id": interaction.user.id,
                 "created": dt.datetime.now(dt.timezone.utc).isoformat(),
                 "uses": 0,
+                "ping_mentions": False,
             }
             save()
+            role_ids, user_ids = _mentioned_ids(text)
+            if role_ids or user_ids:
+                await interaction.response.send_message(
+                    f"Tag **.{self.tag_name}** created. Should its mentions ping "
+                    "when the tag is used?",
+                    view=PingMentionsView(self.tag_name),
+                    ephemeral=True,
+                )
+                return
             await interaction.response.send_message(
                 f"Tag **.{self.tag_name}** created. Call it with `.{self.tag_name}`.",
                 ephemeral=True,
@@ -223,6 +263,42 @@ class TagContentModal(discord.ui.Modal):
         await interaction.response.edit_message(
             embed=build_tag_embed(self.tag_name, entry), view=self.manage_view
         )
+
+
+class PingMentionsView(discord.ui.View):
+    """Create-time question: should the tag's mentions ping when it's used?"""
+
+    def __init__(self, name: str):
+        super().__init__(timeout=300)
+        self.name = name
+
+    async def _set(self, interaction: discord.Interaction, ping: bool) -> None:
+        entry = config["tags"].get(self.name)
+        if entry is None:
+            await interaction.response.edit_message(
+                content=f"`.{self.name}` no longer exists.", view=None
+            )
+            self.stop()
+            return
+        entry["ping_mentions"] = ping
+        save()
+        await interaction.response.edit_message(
+            content=(
+                f"Tag **.{self.name}** will ping its mentions."
+                if ping
+                else f"Tag **.{self.name}** won't ping its mentions."
+            ),
+            view=None,
+        )
+        self.stop()
+
+    @discord.ui.button(label="Ping", style=discord.ButtonStyle.green)
+    async def ping(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._set(interaction, True)
+
+    @discord.ui.button(label="Don't ping", style=discord.ButtonStyle.grey)
+    async def no_ping(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._set(interaction, False)
 
 
 class RenameTagModal(discord.ui.Modal, title="Rename tag"):
@@ -273,6 +349,11 @@ class TagManageView(discord.ui.View):
     def __init__(self, name: str):
         super().__init__(timeout=300)
         self.name = name
+        self.toggle_ping.label = (
+            "Ping mentions: on"
+            if config["tags"].get(name, {}).get("ping_mentions")
+            else "Ping mentions: off"
+        )
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         entry = config["tags"].get(self.name)
@@ -287,6 +368,20 @@ class TagManageView(discord.ui.View):
             )
             return False
         return True
+
+    @discord.ui.button(label="Ping mentions: off", style=discord.ButtonStyle.grey)
+    async def toggle_ping(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        entry = config["tags"][self.name]
+        entry["ping_mentions"] = not entry.get("ping_mentions")
+        save()
+        button.label = (
+            "Ping mentions: on" if entry["ping_mentions"] else "Ping mentions: off"
+        )
+        await interaction.response.edit_message(
+            embed=build_tag_embed(self.name, entry), view=self
+        )
 
     @discord.ui.button(label="Edit", style=discord.ButtonStyle.blurple)
     async def edit(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
