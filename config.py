@@ -34,6 +34,10 @@ _DEFAULTS = {
     "applications": {},  # str(app_id) -> app definition + panel_message_id
     "application_submissions": {},  # str(thread_id) -> submission record + status
     "tags": {},  # str(name) -> {"content", "author_id", "created": iso, "uses"}
+    "vc_hub_channel_id": None,  # voice channel that creates a personal channel on join
+    "vc_log_channel_id": None,  # channel that receives voice create/button activity
+    "vc_restrict_role_id": None,  # role that Lock and Hide deny access to
+    "voice_channels": {},  # str(channel_id) -> {"owner_id", "panel_message_id", "locked", "hidden"}
 }
 
 config = copy.deepcopy(_DEFAULTS)

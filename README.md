@@ -31,6 +31,12 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    sending a message that starts with `.test` makes the bot post it. `/tag manage` shows a
    tag's content, creator, creation date and use count with Edit/Rename/**Ping mentions**/
    Remove buttons, and `/tag list` lists every tag.
+7. **Voice hub** — joining the configured voice channel creates a personal channel named
+   `<username>'s voice chat` with the hub's permissions, moves the user into it and posts
+   an owner-only control panel in its text chat: **Lock/Unlock** (blocks new joins),
+   **Set limit** (0-99 users, 0 removes it) and **Hide/Unhide**. Lock and Hide deny the
+   role chosen in setup, so the owner keeps access. A channel is deleted once everyone
+   leaves it. An optional log channel records every creation and button press.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. Restarting the bot does not clear the channel: the panels are reused when they
@@ -124,6 +130,9 @@ not in DMs or modmail channels, and the `.` must be the first character of the m
      (leave the options box empty for a free-text answer, or put one choice per line for a
      dropdown). **Manage applications** edits or removes existing ones. Saving an
      application posts its Apply panel; changing the post channel moves all panels.
+   - **VC create:** pick the voice channel that creates personal channels, an optional
+     text channel for its activity log, and the role that **Lock** and **Hide** deny
+     access to, then **Save voice setup**.
 
 `/setup` is ephemeral by default; pass `ephemeral: false` to show the panel in the channel.
 Every setup page stays admin-only either way. Re-running the LFG setup deletes the old
@@ -146,6 +155,11 @@ for the bot's role (or the bot itself) allowing **View Channel**, **Send Message
 **Embed Links**, **Read Message History**, **Create Public Threads**, **Send Messages in
 Threads** and **Manage Threads** — otherwise the posts appear but thread creation fails.
 
+For the voice hub, the bot needs **Manage Channels** (create, edit and delete the personal
+channels), **Manage Roles** (change their permission overwrites), **Move Members** (move
+the joiner into their new channel) and **Send Messages** in the voice channels (that's
+where it posts the control panel).
+
 For the applications review channel the bot needs View Channel, Send Messages, Embed Links,
 Read Message History, Add Reactions, Create Public Threads, Send Messages in Threads and
 Manage Threads (the last one to archive and lock decided threads). The post channel only
@@ -163,6 +177,7 @@ tells them to open their DMs if it can't send the first question.
   transcript logging.
 - `suggestions.py` — `/suggestion` weapon lookup/autocomplete and its setup page.
 - `tags.py` — `/tag` commands, the `.name` trigger and tag management.
+- `voicehub.py` — join-to-create voice channels, the owner control panel and activity logs.
 - `applications.py` — application builder, Apply panels, DM questionnaire, submission
   review threads with Approve/Deny.
 - `weapons.json` — weapon list (display names) used by the `/suggestion` autocomplete.

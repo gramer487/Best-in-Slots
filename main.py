@@ -16,6 +16,7 @@ import modmail
 import permissions
 import suggestions
 import tags
+import voicehub
 from config import config, save
 from modmail import ModmailCloseView, ModmailPanelView
 from suggestions import weapon_autocomplete
@@ -89,6 +90,7 @@ async def on_ready():
     if guild is not None:
         bot.add_view(RolePanelView(guild))
     bot.add_view(LfgPanelView())
+    bot.add_view(voicehub.VoiceControlView())
     applications.register_views(bot)
     await bot.change_presence(
         activity=discord.Activity(
@@ -303,6 +305,12 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent):
     """Removing the ✅ un-marks the player and gives the slot back."""
     await handle_lfg_reaction(bot, payload, removed=True)
+
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """Joining the hub voice channel creates a personal channel; empty ones are deleted."""
+    await voicehub.handle_voice_state(member, before, after)
 
 
 @bot.tree.command(name="setup", description="Open the bot setup panel")

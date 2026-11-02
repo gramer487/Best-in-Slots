@@ -11,6 +11,7 @@ from config import config, save
 from modmail import ModmailSetupView
 from permissions import AdminOnlyView
 from suggestions import SuggestionSetupView
+from voicehub import VoiceSetupView
 
 PANEL_INTRO = "Pick a role to ping, how many players you need and for how long — then hit **Post LFG**.\n\n"
 
@@ -612,6 +613,14 @@ class SetupMenuView(AdminOnlyView):
         await interaction.response.edit_message(
             content="**Applications setup** — channels, panels and active applications.",
             view=ApplicationsSetupView(interaction.guild),
+        )
+
+    @discord.ui.button(label="VC create", style=discord.ButtonStyle.blurple, emoji="🔊", row=0)
+    async def voice(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(
+            content="**Voice setup** — pick the hub voice channel, the activity log "
+            "and the role Lock/Hide deny.",
+            view=VoiceSetupView(interaction.guild),
         )
 
 
