@@ -6,8 +6,9 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
 2. **LFG** — a "Start LFG" button opens an ephemeral form (role to ping, players needed,
    duration, region, optional note via a modal). Submitting posts the LFG with a role ping,
    opens a thread, and posts an owner-only control panel in it (increase/decrease players,
-   mark as full, close). Threads and their LFG posts are deleted exactly 2 hours after
-   creation. The thread owner marks a player by reacting ✅ to that player's message: each
+   mark as full, close). Threads and their LFG posts are deleted 2 hours after creation;
+   the owner can change this with **Set expiry** in the thread controls (e.g. `30m`, `1h`,
+   `7d`, up to 14 days). The thread owner marks a player by reacting ✅ to that player's message: each
    mark removes one needed slot, adds the player to the public embed, and removing the
    reaction undoes it. The owner can also type `$close` (or press **Close thread**) to have
    the thread deleted after 10 minutes.
@@ -36,7 +37,14 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    an owner-only control panel in its text chat: **Lock/Unlock** (blocks new joins),
    **Set limit** (0-99 users, 0 removes it) and **Hide/Unhide**. Lock and Hide deny the
    role chosen in setup, so the owner keeps access. A channel is deleted once everyone
-   leaves it. An optional log channel records every creation and button press.
+   leaves it. An optional log channel keeps one embed per created channel, edited with
+   every creation and button press.
+8. **Watermark** — `/watermark image:<file>` replies with a preview of the image with
+   "This roll data relates to a specific build and may not be the best for your build"
+   in gold (black outline) on a white square that hugs the bottom-right corner, plus a
+   large gray diagonal "discord.gg/bestinslots" watermark at 30% opacity, rotated to
+   run corner to corner and sized as large as the image allows. The layout scales
+   with the image's dimensions.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. Restarting the bot does not clear the channel: the panels are reused when they
@@ -178,6 +186,8 @@ tells them to open their DMs if it can't send the first question.
 - `suggestions.py` — `/suggestion` weapon lookup/autocomplete and its setup page.
 - `tags.py` — `/tag` commands, the `.name` trigger and tag management.
 - `voicehub.py` — join-to-create voice channels, the owner control panel and activity logs.
+- `watermark.py` — `/watermark` image processing: the disclaimer square and diagonal
+  server invite.
 - `applications.py` — application builder, Apply panels, DM questionnaire, submission
   review threads with Approve/Deny.
 - `weapons.json` — weapon list (display names) used by the `/suggestion` autocomplete.

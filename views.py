@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 import discord
 
@@ -20,6 +21,28 @@ FIVE_PLAYER_ROLE_ID = 1559600840950423632
 REGIONS = ("NA", "EU", "SA", "AS", "AU")
 LFG_LIFETIME = dt.timedelta(hours=2)
 LFG_CLOSE_DELAY = dt.timedelta(minutes=10)
+MAX_LFG_LIFETIME = dt.timedelta(days=14)
+_EXPIRY_ARG = re.compile(r"^(\d+)\s*([mhd])$")
+_EXPIRY_UNITS = {
+    "m": dt.timedelta(minutes=1),
+    "h": dt.timedelta(hours=1),
+    "d": dt.timedelta(days=1),
+}
+
+
+def parse_expiry(text: str) -> dt.timedelta | None:
+    """Parse a thread lifetime like '30m', '1h' or '7d'; None if it isn't one."""
+    match = _EXPIRY_ARG.fullmatch(text.strip().lower())
+    if match is None:
+        return None
+    return int(match.group(1)) * _EXPIRY_UNITS[match.group(2)]
+
+
+def thread_expiry(entry: dict) -> dt.datetime:
+    """When the thread is deleted: its custom expiry if set, else 2 hours after creation."""
+    if entry.get("expires_at"):
+        return dt.datetime.fromisoformat(entry["expires_at"])
+    return dt.datetime.fromisoformat(entry["created"]) + LFG_LIFETIME
 
 
 def _summary(role, count, duration, region, note) -> str:
@@ -144,8 +167,7 @@ def build_lfg_embed(guild: discord.Guild, entry: dict) -> discord.Embed:
     embed.add_field(name="Players", value=players[:1024], inline=False)
     if entry.get("note"):
         embed.add_field(name="Note", value=entry["note"], inline=False)
-    created = dt.datetime.fromisoformat(entry["created"])
-    expires = created + LFG_LIFETIME
+    expires = thread_expiry(entry)
     # Discord timestamps render in each viewer's local timezone.
     embed.add_field(
         name="Thread expires",
@@ -236,6 +258,12 @@ class LfgControlView(discord.ui.View):
         await refresh_lfg_messages(interaction.client, interaction.channel_id, entry)
         await interaction.followup.send(text, ephemeral=True)
 
+    @discord.ui.button(label="Set expiry", style=discord.ButtonStyle.grey, custom_id="lfg_expiry")
+    async def expiry(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if await self._owner_entry(interaction) is None:
+            return
+        await interaction.response.send_modal(ExpiryModal())
+
     @discord.ui.button(label="Need one fewer", style=discord.ButtonStyle.grey, custom_id="lfg_dec")
     async def dec(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         entry = await self._owner_entry(interaction)
@@ -285,6 +313,42 @@ class LfgControlView(discord.ui.View):
         await refresh_lfg_messages(interaction.client, interaction.channel_id, entry)
         await interaction.followup.send(
             "This thread will be deleted in 10 minutes.", ephemeral=True
+        )
+
+
+class ExpiryModal(discord.ui.Modal, title="Custom thread expiry"):
+    lifetime = discord.ui.TextInput(
+        label="Expire in",
+        placeholder="30m 1h or 7d",
+        max_length=10,
+    )
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        entry = config["threads"].get(str(interaction.channel_id))
+        if entry is None:
+            await interaction.response.send_message(
+                "This thread is no longer active.", ephemeral=True
+            )
+            return
+        duration = parse_expiry(str(self.lifetime.value))
+        if duration is None or duration <= dt.timedelta(0):
+            await interaction.response.send_message(
+                "Use a number and a unit, like 30m, 1h or 7d.", ephemeral=True
+            )
+            return
+        if duration > MAX_LFG_LIFETIME:
+            await interaction.response.send_message(
+                "The longest custom expiry is 14 days.", ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        expires = dt.datetime.now(dt.timezone.utc) + duration
+        entry["expires_at"] = expires.isoformat()
+        save()
+        await refresh_lfg_messages(interaction.client, interaction.channel_id, entry)
+        await interaction.followup.send(
+            f"This thread will now expire <t:{int(expires.timestamp())}:R>.",
+            ephemeral=True,
         )
 
 
@@ -529,9 +593,10 @@ class LfgSetupView(discord.ui.View):
         try:
             thread = await message.create_thread(
                 name=f"LFG — {self.role.name} ({self.count} needed)"[:100],
-                # Keep the thread visible for its whole two-hour life; 60 minutes would
-                # hide it from the channel list before the bot deletes it.
-                auto_archive_duration=1440,
+                # Keep long-lived threads visible: 60 minutes would hide them from the
+                # channel list, and 1440 (24 hours) would archive them after a day idle.
+                # 10080 (7 days) is Discord's maximum.
+                auto_archive_duration=10080,
             )
         except (discord.HTTPException, ValueError) as e:
             # Don't leave an orphan post with no thread to talk in.

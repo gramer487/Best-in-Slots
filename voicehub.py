@@ -18,18 +18,37 @@ def build_control_view(entry: dict) -> "VoiceControlView":
     return view
 
 
-async def _log(guild: discord.Guild, text: str) -> None:
-    channel = (
-        guild.get_channel(config["vc_log_channel_id"])
+async def _log(channel: discord.VoiceChannel, entry: dict, text: str) -> None:
+    """Append an event to the channel's log embed, editing the same message each time."""
+    log_channel = (
+        channel.guild.get_channel(config["vc_log_channel_id"])
         if config["vc_log_channel_id"]
         else None
     )
-    if channel is None:
+    if log_channel is None:
         return
+    events = entry.setdefault("log", [])
+    events.append(text)
+    embed = discord.Embed(
+        title=f"Voice channel — {channel.name}"[:256],
+        description="\n".join(events)[-4096:],
+        color=discord.Color.blurple(),
+    )
+    message = None
+    if entry.get("log_message_id"):
+        try:
+            message = await log_channel.fetch_message(entry["log_message_id"])
+        except discord.HTTPException:
+            message = None
     try:
-        await channel.send(text)
+        if message is None:
+            message = await log_channel.send(embed=embed)
+            entry["log_message_id"] = message.id
+        else:
+            await message.edit(embed=embed)
     except discord.HTTPException as e:
         print(f"Couldn't write to the voice log channel: {e}")
+    save()
 
 
 def _restrict_role(guild: discord.Guild) -> discord.Role | None:
@@ -88,7 +107,8 @@ class SetLimitModal(discord.ui.Modal, title="Set user limit"):
             )
             return
         await _log(
-            interaction.guild,
+            channel,
+            entry,
             f"{interaction.user} ({interaction.user.id}) "
             + (
                 f"removed the user limit of {channel.mention}."
@@ -134,7 +154,8 @@ class VoiceControlView(discord.ui.View):
             return
         save()
         await _log(
-            interaction.guild,
+            channel,
+            entry,
             f"{interaction.user} ({interaction.user.id}) "
             f"{'locked' if entry['locked'] else 'unlocked'} {channel.mention}.",
         )
@@ -174,7 +195,8 @@ class VoiceControlView(discord.ui.View):
             return
         save()
         await _log(
-            interaction.guild,
+            channel,
+            entry,
             f"{interaction.user} ({interaction.user.id}) "
             f"{'hid' if entry['hidden'] else 'unhid'} {channel.mention}.",
         )
@@ -209,6 +231,7 @@ async def _create_channel(member: discord.Member, hub: discord.VoiceChannel) -> 
         "panel_message_id": None,
         "locked": False,
         "hidden": False,
+        "log_message_id": None,
     }
     # Track the channel before moving its owner so the empty-channel cleanup works
     # even if they leave straight away.
@@ -232,7 +255,8 @@ async def _create_channel(member: discord.Member, hub: discord.VoiceChannel) -> 
                 pass
         return
     await _log(
-        guild,
+        channel,
+        entry,
         f"{member} ({member.id}) created {channel.mention} ({channel.id}).",
     )
 

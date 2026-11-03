@@ -2,3 +2,5 @@ __pycache__/
 .venv/
 .env
 config.json
+image.png
+watermark_preview.png

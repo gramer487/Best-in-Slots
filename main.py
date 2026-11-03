@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime as dt
+import io
 import os
 import traceback
 from pathlib import Path
@@ -29,7 +30,9 @@ from views import (
     handle_lfg_reaction,
     post_panels,
     refresh_lfg_messages,
+    thread_expiry,
 )
+from watermark import apply_watermark
 from worldstate import fetch_worldstate
 
 intents = discord.Intents.default()
@@ -153,11 +156,10 @@ async def expire_threads():
         entry = config["threads"][thread_id]
         if isinstance(entry, str):  # entries from older configs only had a timestamp
             entry = {"created": entry}
-        created = dt.datetime.fromisoformat(entry["created"])
         delete_at = (
             dt.datetime.fromisoformat(entry["delete_at"]) if entry.get("delete_at") else None
         )
-        due = (delete_at is not None and now >= delete_at) or now - created >= dt.timedelta(hours=2)
+        due = (delete_at is not None and now >= delete_at) or now >= thread_expiry(entry)
         if not due:
             continue
         thread = channel.get_thread(int(thread_id))
@@ -387,6 +389,26 @@ async def suggestion(
         )
         return
     await interaction.followup.send(f"✅ Successfully suggested **{display}**.", ephemeral=True)
+
+
+@bot.tree.command(
+    name="watermark", description="Preview an image with the roll-data disclaimer"
+)
+@app_commands.describe(image="Image to add the disclaimer to")
+async def watermark(interaction: discord.Interaction, image: discord.Attachment) -> None:
+    if not (image.content_type or "").startswith("image/"):
+        await interaction.response.send_message("Attach an image file.", ephemeral=True)
+        return
+    # Decoding and re-encoding a large screenshot can take a moment.
+    await interaction.response.defer()
+    try:
+        data = await asyncio.to_thread(apply_watermark, await image.read())
+    except OSError as e:
+        await interaction.followup.send(f"Couldn't process that image: {e}", ephemeral=True)
+        return
+    await interaction.followup.send(
+        file=discord.File(io.BytesIO(data), "watermarked.png")
+    )
 
 
 @bot.tree.command(name="openthread", description="Open a modmail with a user")
