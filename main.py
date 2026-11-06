@@ -27,6 +27,7 @@ from views import (
     RolePanelView,
     SetupMenuView,
     build_status_embed,
+    handle_lfg_command,
     handle_lfg_reaction,
     post_panels,
     refresh_lfg_messages,
@@ -290,6 +291,8 @@ async def on_message(message: discord.Message):
         save()
         await message.channel.send("🗑️ This thread will be deleted in 10 minutes.")
         await refresh_lfg_messages(bot, message.channel.id, entry)
+        return
+    if await handle_lfg_command(bot, message):
         return
     if str(message.channel.id) in {str(cid) for cid in config["modmails"].values()}:
         await modmail.handle_staff(message)

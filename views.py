@@ -186,7 +186,8 @@ def build_control_embed(entry: dict) -> discord.Embed:
         title="LFG controls",
         description=(
             "Only the thread owner can use these buttons.\n"
-            "React ✅ to a player's message to mark them as joined; remove the reaction to undo it."
+            "React ✅ to a player's message to mark them as joined; remove the reaction to undo it.\n"
+            "Add or remove players manually with `$add @user` or `$remove @user`."
         ),
         color=discord.Color.blurple(),
     )
@@ -388,6 +389,47 @@ async def handle_lfg_reaction(bot, payload: discord.RawReactionActionEvent, *, r
     await refresh_lfg_messages(bot, payload.channel_id, entry)
 
 
+async def handle_lfg_command(bot, message: discord.Message) -> bool:
+    """Handle "$add @user" and "$remove @user" typed by the thread owner."""
+    command, _, _ = message.content.strip().partition(" ")
+    command = command.lower()
+    if command not in ("$add", "$remove") or not isinstance(message.channel, discord.Thread):
+        return False
+    entry = config["threads"].get(str(message.channel.id))
+    if not isinstance(entry, dict):
+        return False
+    if entry.get("host") is not None and message.author.id != entry["host"]:
+        return True  # only the thread owner manages the team
+    target = message.mentions[0] if message.mentions else None
+    if target is None:
+        await message.channel.send(f"Use `{command} @user` and mention the player.")
+        return True
+    if target.id == entry.get("host"):
+        await message.channel.send("That's you — the host is already on the team.")
+        return True
+    players = entry.setdefault("players", [])
+    if command == "$add":
+        if target.id in players:
+            await message.channel.send(f"**{target.display_name}** is already on the team.")
+            return True
+        players.append(target.id)
+        entry["players_needed"] = max(0, entry.get("players_needed", 0) - 1)
+        entry["full"] = entry["players_needed"] == 0
+        text = f"✅ Added **{target.display_name}** to the team."
+    else:
+        if target.id not in players:
+            await message.channel.send(f"**{target.display_name}** isn't on the team.")
+            return True
+        players.remove(target.id)
+        entry["players_needed"] = entry.get("players_needed", 0) + 1
+        entry["full"] = False
+        text = f"➖ Removed **{target.display_name}** from the team."
+    save()
+    await refresh_lfg_messages(bot, message.channel.id, entry)
+    await message.channel.send(text, allowed_mentions=discord.AllowedMentions.none())
+    return True
+
+
 def build_status_embed(data: dict) -> discord.Embed:
     """Embed 3: current arbitration and the Steel Path Void Cascade flag."""
     embed = discord.Embed(title="World state", color=discord.Color.orange())
@@ -433,10 +475,12 @@ class LfgSetupView(discord.ui.View):
         self.duration: str | None = None
         self.region: str | None = None
         self.note: str | None = None
+        self.roles = roles
+        self.role_page = 0
 
         self.role_select = discord.ui.Select(
             placeholder="Which role should be pinged?",
-            options=[discord.SelectOption(label=role.name, value=str(role.id)) for role in roles[:25]],
+            options=self._role_options(),
             row=0,
         )
         self.role_select.callback = self.on_role
@@ -482,8 +526,28 @@ class LfgSetupView(discord.ui.View):
             for n in range(1, max_players + 1)
         ]
 
+    def _role_options(self) -> list[discord.SelectOption]:
+        # A select holds at most 25 options; keep two free for page navigation.
+        per_page = 23 if len(self.roles) > 25 else 25
+        start = self.role_page * per_page
+        options = [
+            discord.SelectOption(label=role.name, value=str(role.id))
+            for role in self.roles[start:start + per_page]
+        ]
+        if self.role_page > 0:
+            options.append(discord.SelectOption(label="⬅ Previous roles", value="__prev__"))
+        if start + per_page < len(self.roles):
+            options.append(discord.SelectOption(label="➡ More roles", value="__more__"))
+        return options
+
     async def on_role(self, interaction: discord.Interaction) -> None:
-        self.role = interaction.guild.get_role(int(self.role_select.values[0]))
+        value = self.role_select.values[0]
+        if value in ("__prev__", "__more__"):
+            self.role_page += -1 if value == "__prev__" else 1
+            self.role_select.options = self._role_options()
+            await self._refresh(interaction)
+            return
+        self.role = interaction.guild.get_role(int(value))
         # The player limit depends on the role — rebuild the options and clear the old count.
         self.count_select.options = self._count_options()
         self.count = None
@@ -654,10 +718,8 @@ class SetupMenuView(AdminOnlyView):
 
     @discord.ui.button(label="LFG", style=discord.ButtonStyle.blurple, emoji="🔎", row=0)
     async def lfg(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.edit_message(
-            content="**LFG setup** — page 1: LFG channel, pingable roles and the admin role.",
-            view=SetupChannelView(SetupState(), interaction.guild),
-        )
+        view = SetupChannelView(SetupState(), interaction.guild)
+        await interaction.response.edit_message(content=view.content(), view=view)
 
     @discord.ui.button(label="Modmail", style=discord.ButtonStyle.blurple, emoji="📨", row=0)
     async def modmail(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -702,6 +764,16 @@ class SetupChannelView(AdminOnlyView):
     def __init__(self, state: SetupState, guild: discord.Guild):
         super().__init__(timeout=300)
         self.state = state
+        # The role picker caps each pick at 25 roles, so selections accumulate here —
+        # there is no limit on how many pingable roles can be configured.
+        if state.ping_roles:
+            self.ping_roles = list(state.ping_roles)
+        else:
+            self.ping_roles = [
+                role
+                for rid in config["ping_roles"]
+                if (role := guild.get_role(rid)) is not None
+            ]
         channel_default = (
             [guild.get_channel(config["channel_id"])]
             if config["channel_id"] and guild.get_channel(config["channel_id"])
@@ -717,13 +789,11 @@ class SetupChannelView(AdminOnlyView):
         )
         self.channel_select.callback = self._ack
         self.add_item(self.channel_select)
-        roles_default = [guild.get_role(rid) for rid in config["ping_roles"] if guild.get_role(rid)]
         self.roles_select = discord.ui.RoleSelect(
-            placeholder="Roles that can be pinged in LFG posts",
+            placeholder="Pick roles to add to the pingable list",
             min_values=1,
             max_values=25,
             row=1,
-            default_values=roles_default,
         )
         self.roles_select.callback = self._ack
         self.add_item(self.roles_select)
@@ -743,22 +813,64 @@ class SetupChannelView(AdminOnlyView):
         self.add_item(self.admin_select)
 
     async def _ack(self, interaction: discord.Interaction) -> None:
-        # These selects are only read when "Next" is pressed — just acknowledge the pick.
+        # Selects are read when Add/Remove/Clear/Next is pressed — just acknowledge.
         await interaction.response.defer()
+
+    def content(self) -> str:
+        names = ", ".join(role.name for role in self.ping_roles) or "none"
+        return (
+            "**LFG setup** — page 1: LFG channel, pingable roles and the admin role.\n"
+            f"**Pingable roles ({len(self.ping_roles)}):** {names}"
+        )[:2000]
+
+    @discord.ui.button(label="Add selected", style=discord.ButtonStyle.blurple, row=3)
+    async def add_roles(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        picked = self.roles_select.values
+        if not picked:
+            await interaction.response.send_message(
+                "Pick roles in the dropdown first.", ephemeral=True
+            )
+            return
+        known = {role.id for role in self.ping_roles}
+        for role in picked:
+            if role.id not in known:
+                self.ping_roles.append(role)
+                known.add(role.id)
+        await interaction.response.edit_message(content=self.content(), view=self)
+
+    @discord.ui.button(label="Remove selected", style=discord.ButtonStyle.grey, row=3)
+    async def remove_roles(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        picked = {role.id for role in self.roles_select.values}
+        if not picked:
+            await interaction.response.send_message(
+                "Pick roles in the dropdown first.", ephemeral=True
+            )
+            return
+        self.ping_roles = [role for role in self.ping_roles if role.id not in picked]
+        await interaction.response.edit_message(content=self.content(), view=self)
+
+    @discord.ui.button(label="Clear all", style=discord.ButtonStyle.grey, row=3)
+    async def clear_roles(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        self.ping_roles = []
+        await interaction.response.edit_message(content=self.content(), view=self)
 
     @discord.ui.button(label="Next →", style=discord.ButtonStyle.blurple, row=3)
     async def next(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         # Untouched selects return empty values — fall back to the shown defaults.
         channels = self.channel_select.values or self.channel_select.default_values
-        roles = self.roles_select.values or self.roles_select.default_values
-        if not channels or not roles:
+        if not channels or not self.ping_roles:
             await interaction.response.send_message(
-                "Pick the LFG channel and at least one pingable role first.", ephemeral=True
+                "Pick the LFG channel and add at least one pingable role first.",
+                ephemeral=True,
             )
             return
         # ChannelSelect.values gives a partial channel — resolve it to the real object.
         self.state.channel = interaction.guild.get_channel(channels[0].id)
-        self.state.ping_roles = roles
+        self.state.ping_roles = list(self.ping_roles)
         admin = self.admin_select.values or self.admin_select.default_values
         self.state.admin_role = admin[0] if admin else None
         await interaction.response.edit_message(
@@ -794,10 +906,8 @@ class SetupRolesView(AdminOnlyView):
 
     @discord.ui.button(label="← Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.edit_message(
-            content="**LFG setup** — page 1: LFG channel, pingable roles and the admin role.",
-            view=SetupChannelView(self.state, interaction.guild),
-        )
+        view = SetupChannelView(self.state, interaction.guild)
+        await interaction.response.edit_message(content=view.content(), view=view)
 
     @discord.ui.button(label="Save & post panels", style=discord.ButtonStyle.green, row=3)
     async def save(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:

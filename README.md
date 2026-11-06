@@ -4,14 +4,17 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
 
 1. **Self roles** — 3 buttons that toggle roles on/off. Users can pick more than one.
 2. **LFG** — a "Start LFG" button opens an ephemeral form (role to ping, players needed,
-   duration, region, optional note via a modal). Submitting posts the LFG with a role ping,
+   duration, region, optional note via a modal). The role list can hold any number of
+   pingable roles; when there are more than 25, the dropdown pages through them.
+   Submitting posts the LFG with a role ping,
    opens a thread, and posts an owner-only control panel in it (increase/decrease players,
    mark as full, close). Threads and their LFG posts are deleted 2 hours after creation;
    the owner can change this with **Set expiry** in the thread controls (e.g. `30m`, `1h`,
    `7d`, up to 14 days). The thread owner marks a player by reacting ✅ to that player's message: each
    mark removes one needed slot, adds the player to the public embed, and removing the
-   reaction undoes it. The owner can also type `$close` (or press **Close thread**) to have
-   the thread deleted after 10 minutes.
+   reaction undoes it. The owner can add or remove players manually with `$add @user` and
+   `$remove @user`, or type `$close` (or press **Close thread**) to have the thread deleted
+   after 10 minutes.
 3. **World state** — a third embed below the panels shows the current arbitration (mission,
    location, tier, reset time) and whether a Steel Path Void Cascade fissure is live.
    Data comes from browse.wf and the embed refreshes the moment the arbitration rotates
@@ -126,7 +129,9 @@ who and when) to the fixed tag-log channel; tag uses are not logged.
 7. In your server, run `/setup` (Administrator permission or the configured admin role)
    and pick **LFG** or **Modmail**.
    - **LFG page 1:** pick the LFG channel, the roles LFG posts are allowed to ping, and an
-     optional admin role that can run `/setup`.
+     optional admin role that can run `/setup`. Pick up to 25 roles at a time and press
+     **Add selected** to build an unlimited list; **Remove selected** and **Clear all**
+     edit it.
    - **LFG page 2:** pick the roles for the three self-role buttons (leave empty to hide a
      button), then **Save & post panels**.
    - **Modmail:** pick the panel channel (optional), the roles pinged for new modmail, the
