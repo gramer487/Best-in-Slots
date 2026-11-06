@@ -52,9 +52,9 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
 
 Any non-bot message posted directly in the LFG channel is deleted — conversation happens
 in threads. Restarting the bot does not clear the channel: the panels are reused when they
-still exist (and reposted only if they were deleted), and active LFG posts and threads
-survive restarts and reconnects. When a thread expires or is closed, its LFG post is
-deleted with it.
+still exist (and reposted only if they were deleted, with the world state embed reposted
+below them), and active LFG posts and threads survive restarts and reconnects. When a
+thread expires or is closed, its LFG post is deleted with it.
 
 ### Modmail
 
@@ -153,7 +153,8 @@ who and when) to the fixed tag-log channel; tag uses are not logged.
 
 `/setup` is ephemeral by default; pass `ephemeral: false` to show the panel in the channel.
 Every setup page stays admin-only either way. Re-running the LFG setup deletes the old
-panels and posts fresh ones.
+panels, posts fresh ones, and reposts the world state embed below them so the channel
+stays ordered panels → world state.
 
 ## Recommended channel permissions
 

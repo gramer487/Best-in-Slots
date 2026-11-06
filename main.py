@@ -7,7 +7,6 @@ import os
 import traceback
 from pathlib import Path
 
-import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -26,15 +25,14 @@ from views import (
     LfgPanelView,
     RolePanelView,
     SetupMenuView,
-    build_status_embed,
     handle_lfg_command,
     handle_lfg_reaction,
     post_panels,
     refresh_lfg_messages,
+    refresh_status,
     thread_expiry,
 )
 from watermark import apply_watermark
-from worldstate import fetch_worldstate
 
 intents = discord.Intents.default()
 intents.message_content = True  # needed to read "$close" inside threads
@@ -76,6 +74,13 @@ async def ensure_panels(channel, guild) -> None:
                 await message.delete()
             except discord.HTTPException:
                 pass
+    # The status embed belongs below the panels, so it's reposted along with them.
+    if config["status_message_id"]:
+        try:
+            await (await channel.fetch_message(config["status_message_id"])).delete()
+        except discord.HTTPException:
+            pass
+    config["status_message_id"] = None
     role_message, lfg_message = await post_panels(channel, guild)
     config["panel_message_id"] = role_message.id
     config["lfg_message_id"] = lfg_message.id
@@ -196,32 +201,6 @@ async def expire_threads():
 async def check_modmail_closes():
     """Close scheduled modmails when due (and warn their users 10 minutes before)."""
     await modmail.process_scheduled_closes(bot)
-
-
-async def refresh_status(channel) -> dict | None:
-    """Fetch the world state and post/update the status embed. Returns the data, or None."""
-    try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-            data = await fetch_worldstate(session)
-    except (aiohttp.ClientError, ValueError) as e:
-        print(f"World state fetch failed: {e}")
-        return None
-    message = None
-    if config["status_message_id"]:
-        try:
-            message = await channel.fetch_message(config["status_message_id"])
-        except discord.NotFound:
-            message = None  # deleted — repost
-    try:
-        if message is None:
-            message = await channel.send(embed=build_status_embed(data))
-            config["status_message_id"] = message.id
-            save()
-        else:
-            await message.edit(embed=build_status_embed(data))
-    except discord.HTTPException as e:
-        print(f"Status embed update failed: {e}")
-    return data
 
 
 async def status_task():

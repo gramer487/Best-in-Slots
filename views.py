@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import re
 
+import aiohttp
 import discord
 
 from applications import ApplicationsSetupView
@@ -13,6 +14,7 @@ from modmail import ModmailSetupView
 from permissions import AdminOnlyView
 from suggestions import SuggestionSetupView
 from voicehub import VoiceSetupView
+from worldstate import fetch_worldstate
 
 PANEL_INTRO = "Pick a role to ping, how many players you need and for how long — then hit **Post LFG**.\n\n"
 
@@ -464,6 +466,32 @@ def build_status_embed(data: dict) -> discord.Embed:
         embed.add_field(name="SP Void Cascade", value="❌ False", inline=True)
     embed.set_footer(text="browse.wf")
     return embed
+
+
+async def refresh_status(channel) -> dict | None:
+    """Fetch the world state and post/update the status embed. Returns the data, or None."""
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+            data = await fetch_worldstate(session)
+    except (aiohttp.ClientError, ValueError) as e:
+        print(f"World state fetch failed: {e}")
+        return None
+    message = None
+    if config["status_message_id"]:
+        try:
+            message = await channel.fetch_message(config["status_message_id"])
+        except discord.NotFound:
+            message = None  # deleted — repost
+    try:
+        if message is None:
+            message = await channel.send(embed=build_status_embed(data))
+            config["status_message_id"] = message.id
+            save()
+        else:
+            await message.edit(embed=build_status_embed(data))
+    except discord.HTTPException as e:
+        print(f"Status embed update failed: {e}")
+    return data
 
 
 class LfgSetupView(discord.ui.View):
@@ -989,6 +1017,13 @@ class SetupRolesView(AdminOnlyView):
                     await (await channel.fetch_message(message_id)).delete()
                 except (discord.NotFound, discord.Forbidden):
                     pass
+        # The status embed belongs below the panels, so it's reposted along with them.
+        if old_channel is not None and config["status_message_id"]:
+            try:
+                await (await old_channel.fetch_message(config["status_message_id"])).delete()
+            except discord.HTTPException:
+                pass
+        config["status_message_id"] = None
         config["guild_id"] = guild.id
         config["channel_id"] = self.state.channel.id
         config["ping_roles"] = [role.id for role in self.state.ping_roles]
@@ -1000,3 +1035,5 @@ class SetupRolesView(AdminOnlyView):
         await interaction.response.edit_message(
             content=f"✅ Saved! Panels posted in {self.state.channel.mention}.", view=None
         )
+        # Post the status embed last so the channel stays panels → status.
+        await refresh_status(self.state.channel)
