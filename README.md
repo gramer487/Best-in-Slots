@@ -2,7 +2,8 @@
 
 A single-server Discord bot with LFG panels, a world state embed and modmail.
 
-1. **Self roles** — 3 buttons that toggle roles on/off. Users can pick more than one.
+1. **Self roles** — one button per configured role, up to Discord's limit of 25 buttons
+   per message; each button toggles that role on/off. Users can pick more than one.
 2. **LFG** — a "Start LFG" button opens an ephemeral form (role to ping, players needed,
    duration, region, optional note via a modal). The role list can hold any number of
    pingable roles; when there are more than 25, the dropdown pages through them.
@@ -132,8 +133,9 @@ who and when) to the fixed tag-log channel; tag uses are not logged.
      optional admin role that can run `/setup`. Pick up to 25 roles at a time and press
      **Add selected** to build an unlimited list; **Remove selected** and **Clear all**
      edit it.
-   - **LFG page 2:** pick the roles for the three self-role buttons (leave empty to hide a
-     button), then **Save & post panels**.
+   - **LFG page 2:** pick the roles shown as self-role buttons — **Add selected**,
+     **Remove selected** and **Clear all** work like page 1, and a panel holds up to
+     Discord's 25-button limit — then **Save & post panels**.
    - **Modmail:** pick the panel channel (optional), the roles pinged for new modmail, the
      moderator role, and the log forum (optional), then **Save modmail setup**. This creates
      the staff-only **Modmail** category and posts the contact panel.

@@ -22,6 +22,8 @@ REGIONS = ("NA", "EU", "SA", "AS", "AU")
 LFG_LIFETIME = dt.timedelta(hours=2)
 LFG_CLOSE_DELAY = dt.timedelta(minutes=10)
 MAX_LFG_LIFETIME = dt.timedelta(days=14)
+# Discord allows at most five rows of five buttons in a single message.
+MAX_ROLE_BUTTONS = 25
 _EXPIRY_ARG = re.compile(r"^(\d+)\s*([mhd])$")
 _EXPIRY_UNITS = {
     "m": dt.timedelta(minutes=1),
@@ -56,35 +58,33 @@ def _summary(role, count, duration, region, note) -> str:
 
 
 class RolePanelView(discord.ui.View):
-    """Embed 1: three buttons that toggle self-assignable roles."""
+    """Embed 1: one button per configured role; pressing it toggles that role."""
 
     def __init__(self, guild: discord.Guild, roles: list[discord.Role | None] | None = None):
         super().__init__(timeout=None)
         if roles is None:
             roles = [guild.get_role(rid) if rid else None for rid in config["button_roles"]]
-        for i in range(3):
-            button = self.children[i]
-            role = roles[i]
-            if role is None:
-                button.label = "—"
-                button.disabled = True
-            else:
-                button.label = role.name
+        seen: set[int] = set()
+        for role in roles:
+            if role is None or role.id in seen:
+                continue
+            seen.add(role.id)
+            button = discord.ui.Button(
+                label=role.name[:80],
+                style=discord.ButtonStyle.blurple,
+                custom_id=f"role_button_{role.id}",
+            )
+            button.callback = self._toggle_callback(role.id)
+            self.add_item(button)
 
-    @discord.ui.button(label="Role 1", style=discord.ButtonStyle.blurple, custom_id="role_button_0")
-    async def role_button_0(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self._toggle(interaction, 0)
+    def _toggle_callback(self, role_id: int):
+        async def toggle(interaction: discord.Interaction) -> None:
+            await self._toggle(interaction, role_id)
 
-    @discord.ui.button(label="Role 2", style=discord.ButtonStyle.blurple, custom_id="role_button_1")
-    async def role_button_1(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self._toggle(interaction, 1)
+        return toggle
 
-    @discord.ui.button(label="Role 3", style=discord.ButtonStyle.blurple, custom_id="role_button_2")
-    async def role_button_2(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await self._toggle(interaction, 2)
-
-    async def _toggle(self, interaction: discord.Interaction, index: int) -> None:
-        role = interaction.guild.get_role(config["button_roles"][index])
+    async def _toggle(self, interaction: discord.Interaction, role_id: int) -> None:
+        role = interaction.guild.get_role(role_id)
         if role is None:
             await interaction.response.send_message(
                 "That role isn't configured anymore.", ephemeral=True
@@ -126,13 +126,14 @@ class LfgPanelView(discord.ui.View):
 
 async def post_panels(channel, guild, button_roles=None):
     """Post the self-role and LFG panels in the channel. Returns (role_message, lfg_message)."""
+    role_view = RolePanelView(guild, button_roles)
     role_message = await channel.send(
         embed=discord.Embed(
             title="Self roles",
             description="Select or remove the role(s) that you want to be pinged in LFG posts.",
             color=discord.Color.blurple(),
         ),
-        view=RolePanelView(guild, button_roles),
+        view=role_view if role_view.children else None,
     )
     lfg_message = await channel.send(
         embed=discord.Embed(
@@ -755,6 +756,7 @@ class SetupState:
     def __init__(self):
         self.channel: discord.TextChannel | None = None
         self.ping_roles: list[discord.Role] = []
+        self.button_roles: list[discord.Role] = []
         self.admin_role: discord.Role | None = None
 
 
@@ -873,43 +875,92 @@ class SetupChannelView(AdminOnlyView):
         self.state.ping_roles = list(self.ping_roles)
         admin = self.admin_select.values or self.admin_select.default_values
         self.state.admin_role = admin[0] if admin else None
-        await interaction.response.edit_message(
-            content="**LFG setup** — page 2: pick the roles for the three self-role buttons.",
-            view=SetupRolesView(self.state, interaction.guild),
-        )
+        view = SetupRolesView(self.state, interaction.guild)
+        await interaction.response.edit_message(content=view.content(), view=view)
 
 
 class SetupRolesView(AdminOnlyView):
-    """Setup page 2: the three role-button roles, then save & post the panels."""
+    """Setup page 2: the self-role buttons, then save & post the panels."""
 
     def __init__(self, state: SetupState, guild: discord.Guild):
         super().__init__(timeout=300)
         self.state = state
-        self.role_selects: list[discord.ui.RoleSelect] = []
-        for i in range(3):
-            role_id = config["button_roles"][i]
-            default = [guild.get_role(role_id)] if role_id and guild.get_role(role_id) else []
-            select = discord.ui.RoleSelect(
-                placeholder=f"Role for button {i + 1}",
-                min_values=0,
-                max_values=1,
-                row=i,
-                default_values=default,
-            )
-            select.callback = self._ack
-            self.role_selects.append(select)
-            self.add_item(select)
+        # Like the pingable roles: picks accumulate, so the button count isn't
+        # limited by the 25 roles a single picker interaction can carry.
+        if state.button_roles:
+            self.button_roles = list(state.button_roles)
+        else:
+            self.button_roles = [
+                role
+                for rid in config["button_roles"]
+                if rid and (role := guild.get_role(rid)) is not None
+            ]
+        self.roles_select = discord.ui.RoleSelect(
+            placeholder="Pick roles to add as self-role buttons",
+            min_values=1,
+            max_values=25,
+            row=0,
+        )
+        self.roles_select.callback = self._ack
+        self.add_item(self.roles_select)
 
     async def _ack(self, interaction: discord.Interaction) -> None:
-        # These selects are only read when "Save & post panels" is pressed.
+        # The select is read when Add/Remove/Clear/Save is pressed — just acknowledge.
         await interaction.response.defer()
 
-    @discord.ui.button(label="← Back", style=discord.ButtonStyle.grey, row=3)
+    def content(self) -> str:
+        names = ", ".join(role.name for role in self.button_roles) or "none"
+        return (
+            "**LFG setup** — page 2: pick the roles for the self-role buttons.\n"
+            f"**Buttons ({len(self.button_roles)}/{MAX_ROLE_BUTTONS}):** {names}"
+        )[:2000]
+
+    @discord.ui.button(label="Add selected", style=discord.ButtonStyle.blurple, row=1)
+    async def add_roles(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        picked = self.roles_select.values
+        if not picked:
+            await interaction.response.send_message(
+                "Pick roles in the dropdown first.", ephemeral=True
+            )
+            return
+        known = {role.id for role in self.button_roles}
+        new = [role for role in picked if role.id not in known]
+        if len(self.button_roles) + len(new) > MAX_ROLE_BUTTONS:
+            await interaction.response.send_message(
+                f"A panel can hold at most {MAX_ROLE_BUTTONS} buttons — remove some first.",
+                ephemeral=True,
+            )
+            return
+        self.button_roles.extend(new)
+        await interaction.response.edit_message(content=self.content(), view=self)
+
+    @discord.ui.button(label="Remove selected", style=discord.ButtonStyle.grey, row=1)
+    async def remove_roles(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        picked = {role.id for role in self.roles_select.values}
+        if not picked:
+            await interaction.response.send_message(
+                "Pick roles in the dropdown first.", ephemeral=True
+            )
+            return
+        self.button_roles = [role for role in self.button_roles if role.id not in picked]
+        await interaction.response.edit_message(content=self.content(), view=self)
+
+    @discord.ui.button(label="Clear all", style=discord.ButtonStyle.grey, row=1)
+    async def clear_roles(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        self.button_roles = []
+        await interaction.response.edit_message(content=self.content(), view=self)
+
+    @discord.ui.button(label="← Back", style=discord.ButtonStyle.grey, row=2)
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.state.button_roles = list(self.button_roles)
         view = SetupChannelView(self.state, interaction.guild)
         await interaction.response.edit_message(content=view.content(), view=view)
 
-    @discord.ui.button(label="Save & post panels", style=discord.ButtonStyle.green, row=3)
+    @discord.ui.button(label="Save & post panels", style=discord.ButtonStyle.green, row=2)
     async def save(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if self.state.channel is None:
             await interaction.response.send_message(
@@ -917,15 +968,7 @@ class SetupRolesView(AdminOnlyView):
             )
             return
         guild = interaction.guild
-        # Untouched selects return empty values — fall back to the shown defaults.
-        button_roles = []
-        for select in self.role_selects:
-            if select.values:
-                button_roles.append(guild.get_role(select.values[0].id))
-            elif select.default_values:
-                button_roles.append(guild.get_role(select.default_values[0].id))
-            else:
-                button_roles.append(None)
+        button_roles = list(self.button_roles)
         try:
             role_message, lfg_message = await post_panels(self.state.channel, guild, button_roles)
         except discord.Forbidden:
@@ -950,7 +993,7 @@ class SetupRolesView(AdminOnlyView):
         config["channel_id"] = self.state.channel.id
         config["ping_roles"] = [role.id for role in self.state.ping_roles]
         config["admin_role_id"] = self.state.admin_role.id if self.state.admin_role else None
-        config["button_roles"] = [role.id if role else None for role in button_roles]
+        config["button_roles"] = [role.id for role in button_roles]
         config["panel_message_id"] = role_message.id
         config["lfg_message_id"] = lfg_message.id
         save()
