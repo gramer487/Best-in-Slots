@@ -85,6 +85,8 @@ and **Remove** (with a confirmation) buttons. Only the tag's creator or an admin
 those buttons. `/tag manage` and `/tag list` are ephemeral by default; pass
 `ephemeral: false` to show them in the channel. Tags work in normal channels and threads,
 not in DMs or modmail channels, and the `.` must be the first character of the message.
+Tag creations, content edits, renames and removals are posted as embeds (tag, content,
+who and when) to the fixed tag-log channel; tag uses are not logged.
 
 ## Setup
 
@@ -184,7 +186,7 @@ tells them to open their DMs if it can't send the first question.
 - `modmail.py` — modmail panel, category/channel creation, DM relay, `&reply`/`&close`,
   transcript logging.
 - `suggestions.py` — `/suggestion` weapon lookup/autocomplete and its setup page.
-- `tags.py` — `/tag` commands, the `.name` trigger and tag management.
+- `tags.py` — `/tag` commands, the `.name` trigger, tag management and the change log.
 - `voicehub.py` — join-to-create voice channels, the owner control panel and activity logs.
 - `watermark.py` — `/watermark` image processing: the disclaimer square and diagonal
   server invite.

@@ -15,6 +15,33 @@ from config import config, save
 NAME_RE = re.compile(r"[a-z0-9_-]{1,32}")
 MENTION_RE = re.compile(r"<@&(\d+)>|<@!?(\d+)>")
 TRIGGER_PREFIX = "."
+# Fixed audit-log channel: every tag create/edit/delete is posted here. Usage isn't.
+TAG_LOG_CHANNEL_ID = 1567214449478336553
+
+
+async def _log_tag_change(
+    bot: discord.Client,
+    title: str,
+    user: discord.abc.User,
+    description: str | None = None,
+    *,
+    color: discord.Color,
+) -> None:
+    """Post a tag change to the audit-log channel with who made it and when."""
+    channel = bot.get_channel(TAG_LOG_CHANNEL_ID)
+    if channel is None:
+        return
+    embed = discord.Embed(
+        title=title[:256],
+        description=description[:4096] if description else None,
+        color=color,
+        timestamp=dt.datetime.now(dt.timezone.utc),
+    )
+    embed.add_field(name="By", value=f"{user.mention} (`{user.id}`)", inline=False)
+    try:
+        await channel.send(embed=embed)
+    except discord.HTTPException as e:
+        print(f"Couldn't write to the tag log channel: {e}")
 
 
 def normalize_name(name: str) -> str | None:
@@ -233,6 +260,13 @@ class TagContentModal(discord.ui.Modal):
                 "ping_mentions": False,
             }
             save()
+            await _log_tag_change(
+                interaction.client,
+                f"Tag created — .{self.tag_name}",
+                interaction.user,
+                text,
+                color=discord.Color.green(),
+            )
             role_ids, user_ids = _mentioned_ids(text)
             if role_ids or user_ids:
                 await interaction.response.send_message(
@@ -260,6 +294,13 @@ class TagContentModal(discord.ui.Modal):
             return
         entry["content"] = text
         save()
+        await _log_tag_change(
+            interaction.client,
+            f"Tag edited — .{self.tag_name}",
+            interaction.user,
+            text,
+            color=discord.Color.orange(),
+        )
         await interaction.response.edit_message(
             embed=build_tag_embed(self.tag_name, entry), view=self.manage_view
         )
@@ -339,6 +380,12 @@ class RenameTagModal(discord.ui.Modal, title="Rename tag"):
             del config["tags"][old_name]
             config["tags"][new_name] = entry
             save()
+            await _log_tag_change(
+                interaction.client,
+                f"Tag renamed — .{old_name} → .{new_name}",
+                interaction.user,
+                color=discord.Color.orange(),
+            )
         self.manage_view.name = new_name
         await interaction.response.edit_message(
             embed=build_tag_embed(new_name, entry), view=self.manage_view
@@ -425,8 +472,15 @@ class ConfirmRemoveView(discord.ui.View):
 
     @discord.ui.button(label="Remove", style=discord.ButtonStyle.red)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        config["tags"].pop(self.name, None)
+        entry = config["tags"].pop(self.name, None)
         save()
+        await _log_tag_change(
+            interaction.client,
+            f"Tag deleted — .{self.name}",
+            interaction.user,
+            entry.get("content") if entry else None,
+            color=discord.Color.red(),
+        )
         await interaction.response.edit_message(
             content=f"Tag **.{self.name}** removed.", embed=None, view=None
         )
