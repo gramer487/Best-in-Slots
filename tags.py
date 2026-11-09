@@ -1,4 +1,4 @@
-"""Server tags: /tag create/manage/list and the "." trigger in messages."""
+"""Server tags: /tag create/manage/list/use and the "." trigger in messages."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ from config import config, save
 
 NAME_RE = re.compile(r"[a-z0-9_-]{1,32}")
 MENTION_RE = re.compile(r"<@&(\d+)>|<@!?(\d+)>")
+# Flags after a tag name: "-c <channel id>" and "-u <user id>"; mentions work too.
+FLAG_RE = re.compile(r"(?:^|\s)-(c|u)\s+(?:<[#@!&]+)?(\d+)")
 TRIGGER_PREFIX = "."
 # Fixed audit-log channel: every tag create/edit/delete is posted here. Usage isn't.
 TAG_LOG_CHANNEL_ID = 1567214449478336553
@@ -101,19 +103,39 @@ def _mentioned_ids(content: str) -> tuple[list[int], list[int]]:
     return list(dict.fromkeys(role_ids)), list(dict.fromkeys(user_ids))
 
 
-async def _post_tag(channel, name: str, entry: dict) -> bool:
-    """Post a tag's content; its mentions ping only if the tag says so."""
+def _parse_flags(text: str) -> list[tuple[str, int]]:
+    """Pull "-c <channel id>" and "-u <user id>" flags out of the text after a name."""
+    return [(match.group(1), int(match.group(2))) for match in FLAG_RE.finditer(text)]
+
+
+async def _post_tag(
+    channel, name: str, entry: dict, ping_user_id: int | None = None
+) -> bool:
+    """Post a tag's content; its mentions ping only if the tag says so.
+
+    ping_user_id prepends a mention of that user and lets it ping regardless of the
+    tag's ping setting — the poster asked for that ping explicitly.
+    """
+    content = entry["content"]
     allowed = discord.AllowedMentions.none()
     if entry.get("ping_mentions"):
         role_ids, user_ids = _mentioned_ids(entry["content"])
+        if ping_user_id is not None and ping_user_id not in user_ids:
+            user_ids.append(ping_user_id)
         # everyone=False: without it AllowedMentions would also allow @everyone/@here.
         allowed = discord.AllowedMentions(
             everyone=False,
             roles=[discord.Object(id=role_id) for role_id in role_ids],
             users=[discord.Object(id=user_id) for user_id in user_ids],
         )
+    elif ping_user_id is not None:
+        allowed = discord.AllowedMentions(
+            everyone=False, users=[discord.Object(id=ping_user_id)]
+        )
+    if ping_user_id is not None:
+        content = f"<@{ping_user_id}> {content}"
     try:
-        await channel.send(entry["content"], allowed_mentions=allowed)
+        await channel.send(content, allowed_mentions=allowed)
     except discord.HTTPException as e:
         print(f"Couldn't post tag .{name}: {e}")
         return False
@@ -123,19 +145,51 @@ async def _post_tag(channel, name: str, entry: dict) -> bool:
 
 
 async def handle_message(message: discord.Message) -> bool:
-    """Post a tag when a message starts with "." followed by an existing name."""
+    """Post a tag when a message starts with "." followed by an existing name.
+
+    Flags after the name: "-c <channel id>" posts the tag there instead of the
+    current channel (moderators only), and "-u <user id>" pings that user.
+    """
     if message.guild is None or message.author.bot:
         return False
     content = message.content.lstrip()
     if not content.startswith(TRIGGER_PREFIX):
         return False
-    name = normalize_name(content[1:].split(maxsplit=1)[0]) if len(content) > 1 else None
+    parts = content[1:].split(maxsplit=1)
+    name = normalize_name(parts[0]) if parts else None
     if name is None:
         return False
     entry = config["tags"].get(name)
     if entry is None:
         return False
-    return await _post_tag(message.channel, name, entry)
+    flags = _parse_flags(parts[1]) if len(parts) > 1 else []
+    channel_id = next((value for flag, value in flags if flag == "c"), None)
+    ping_user_id = next((value for flag, value in flags if flag == "u"), None)
+    channel = message.channel
+    if channel_id is not None:
+        if not _is_moderator(message.author):
+            await message.channel.send(
+                "Only moderators can post a tag in another channel."
+            )
+            return True
+        channel = message.guild.get_channel_or_thread(channel_id)
+        if channel is None:
+            try:
+                channel = await message.guild.fetch_channel(channel_id)
+            except discord.HTTPException:
+                channel = None
+        if not hasattr(channel, "send"):
+            await message.channel.send(
+                f"I can't post tags in a channel with ID `{channel_id}` — "
+                "pick a text channel or thread."
+            )
+            return True
+    posted = await _post_tag(channel, name, entry, ping_user_id=ping_user_id)
+    if not posted and channel is not message.channel:
+        await message.channel.send(
+            f"I couldn't post `.{name}` in {channel.mention} — check my permissions there."
+        )
+    return posted
 
 
 tag_group = app_commands.Group(name="tag", description="Create, manage and list tags")
@@ -216,6 +270,53 @@ async def tag_list(interaction: discord.Interaction, ephemeral: bool = True) -> 
         color=discord.Color.blurple(),
     )
     await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
+
+
+@tag_group.command(name="use", description="Post a tag")
+@app_commands.describe(
+    name="Tag to post",
+    channel="Channel to post it in (default: the current channel)",
+    mention="User to ping with the tag",
+)
+@app_commands.autocomplete(name=tag_autocomplete)
+async def tag_use(
+    interaction: discord.Interaction,
+    name: str,
+    channel: discord.TextChannel | None = None,
+    mention: discord.User | None = None,
+) -> None:
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "Tags only work in the server.", ephemeral=True
+        )
+        return
+    normalized = normalize_name(name)
+    entry = config["tags"].get(normalized) if normalized else None
+    if entry is None:
+        await interaction.response.send_message(
+            "There's no tag with that name. Use `/tag list` to see the existing tags.",
+            ephemeral=True,
+        )
+        return
+    if channel is not None and not _is_moderator(interaction.user):
+        await interaction.response.send_message(
+            "Only moderators can post a tag in another channel.", ephemeral=True
+        )
+        return
+    target = channel if channel is not None else interaction.channel
+    await interaction.response.defer(ephemeral=True)
+    posted = await _post_tag(
+        target, normalized, entry, ping_user_id=mention.id if mention else None
+    )
+    if posted:
+        await interaction.followup.send(
+            f"Posted **.{normalized}** in {target.mention}.", ephemeral=True
+        )
+    else:
+        await interaction.followup.send(
+            "I couldn't post the tag — check my permissions in that channel.",
+            ephemeral=True,
+        )
 
 
 class TagContentModal(discord.ui.Modal):

@@ -33,9 +33,10 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    to say approved or denied and who decided, deletes the post in the review channel, DMs
    the applicant and locks/archives the thread, which stays available with its history.
 6. **Tags** — moderators use `/tag create name:test` to store a message behind `.test`;
-   sending a message that starts with `.test` makes the bot post it. `/tag manage` shows a
-   tag's content, creator, creation date and use count with Edit/Rename/**Ping mentions**/
-   Remove buttons, and `/tag list` lists every tag.
+   sending a message that starts with `.test` makes the bot post it, and
+   `/tag use name:test` posts it from a slash command with optional channel and ping.
+   `/tag manage` shows a tag's content, creator, creation date and use count with
+   Edit/Rename/**Ping mentions**/Remove buttons, and `/tag list` lists every tag.
 7. **Voice hub** — joining the configured voice channel creates a personal channel named
    `<username>'s voice chat` with the hub's permissions, moves the user into it and posts
    an owner-only control panel in its text chat: **Lock/Unlock** (blocks new joins),
@@ -89,6 +90,12 @@ and **Remove** (with a confirmation) buttons. Only the tag's creator or an admin
 those buttons. `/tag manage` and `/tag list` are ephemeral by default; pass
 `ephemeral: false` to show them in the channel. Tags work in normal channels and threads,
 not in DMs or modmail channels, and the `.` must be the first character of the message.
+`.test -c <channel id>` posts the tag in that channel instead of the current one
+(moderators and admins only), and `.test -u <user id>` pings that user along with the
+tag; raw IDs and pasted mentions (`<#id>`, `<@id>`) both work.
+`/tag use name:test channel:#channel mention:@user` does the same from a slash
+command: `name` is required, and the optional `channel` (moderators only) and
+`mention` work like the flags.
 Tag creations, content edits, renames and removals are posted as embeds (tag, content,
 who and when) to the fixed tag-log channel; tag uses are not logged.
 
