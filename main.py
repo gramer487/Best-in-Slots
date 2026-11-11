@@ -101,6 +101,10 @@ async def on_ready():
     bot.add_view(LfgPanelView())
     bot.add_view(voicehub.VoiceControlView())
     applications.register_views(bot)
+    try:
+        await applications.refresh_panels(bot)
+    except Exception as e:
+        print(f"Application panel refresh failed: {e}")
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching, name="do /suggestion for BiS req"

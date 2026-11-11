@@ -29,9 +29,10 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    starts a DM conversation: the bot asks the questions one at a time (multiple choice uses
    a dropdown), shows a summary and asks for confirmation, then posts the answers to the
    review channel. The submission also gets a private thread with the same embed and
-   **Approve**/**Deny** buttons (plus ✅/❌ reactions). A decision edits the in-thread embed
-   to say approved or denied and who decided, deletes the post in the review channel, DMs
-   the applicant and locks/archives the thread, which stays available with its history.
+   **Approve**/**Deny** buttons (plus ✅/❌ reactions). Only the reviewer role picked in
+   setup (or administrators) can decide. A decision edits the in-thread embed to say
+   approved or denied and who decided, deletes the post in the review channel, DMs the
+   applicant and locks/archives the thread, which stays available with its history.
 6. **Tags** — moderators use `/tag create name:test` to store a message behind `.test`;
    sending a message that starts with `.test` makes the bot post it, and
    `/tag use name:test` posts it from a slash command with optional channel and ping.
@@ -148,8 +149,9 @@ who and when) to the fixed tag-log channel; tag uses are not logged.
      the staff-only **Modmail** category and posts the contact panel.
    - **Suggestions:** pick the channel that receives suggestion posts and the role to ping,
      then **Save suggestion setup**.
-   - **Applications:** pick the public channel that will hold the Apply panels and the staff
-     channel that receives submissions, then **Save channels**. **Create application** asks
+   - **Applications:** pick the public channel that will hold the Apply panels, the staff
+     channel that receives submissions, and the role that can approve or deny with the
+     buttons, then **Save setup**. **Create application** asks
      for a title, the role required to apply, a description, and any number of questions
      (leave the options box empty for a free-text answer, or put one choice per line for a
      dropdown). **Manage applications** edits or removes existing ones. Saving an
