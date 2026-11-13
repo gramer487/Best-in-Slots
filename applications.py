@@ -300,11 +300,11 @@ class ApplicationConfirmView(discord.ui.View):
         guild = (
             interaction.client.get_guild(config["guild_id"]) if config["guild_id"] else None
         )
-        channel = (
-            guild.get_channel(config["applications_review_channel_id"])
-            if guild and config["applications_review_channel_id"]
-            else None
-        )
+        # Apps created before per-app channels fall back to the old global one.
+        channel_id = (
+            app.get("review_channel_id") or config["applications_review_channel_id"]
+        ) if app else None
+        channel = guild.get_channel(channel_id) if guild and channel_id else None
         if app is None or guild is None or channel is None:
             _sessions.pop(self.user.id, None)
             await interaction.response.edit_message(
@@ -330,8 +330,22 @@ class ApplicationConfirmView(discord.ui.View):
             "review_channel_id": channel.id,
         }
         embeds = build_submission_embeds(submission)
+        ping_role_ids = [
+            role_id
+            for role_id in app.get("ping_role_ids", [])
+            if guild.get_role(role_id) is not None
+        ]
+        ping = " ".join(f"<@&{role_id}>" for role_id in ping_role_ids) or None
         try:
-            message = await channel.send(embeds=embeds, view=ApplicationReviewView())
+            message = await channel.send(
+                content=ping,
+                embeds=embeds,
+                view=ApplicationReviewView(),
+                allowed_mentions=discord.AllowedMentions(
+                    everyone=False,
+                    roles=[discord.Object(id=role_id) for role_id in ping_role_ids],
+                ),
+            )
         except discord.HTTPException:
             _sessions.pop(self.user.id, None)
             await interaction.message.edit(
@@ -509,21 +523,46 @@ class ApplicationReviewView(discord.ui.View):
 
         return callback
 
-    async def _decide(self, interaction: discord.Interaction, approved: bool) -> None:
+    async def _check_reviewer(self, interaction: discord.Interaction) -> bool:
         if (
-            not isinstance(interaction.user, discord.Member)
-            or interaction.guild is None
-            or not self._can_review(interaction.user)
+            isinstance(interaction.user, discord.Member)
+            and interaction.guild is not None
+            and self._can_review(interaction.user)
         ):
-            await interaction.response.send_message(
-                "Only the reviewer role can approve or deny applications.", ephemeral=True
-            )
+            return True
+        await interaction.response.send_message(
+            "Only the reviewer role can approve or deny applications.", ephemeral=True
+        )
+        return False
+
+    async def _decide(self, interaction: discord.Interaction, approved: bool) -> None:
+        if not await self._check_reviewer(interaction):
             return
         submission = _find_submission(interaction.message.id)
         if submission is None:
             await interaction.response.send_message(
                 "This application is no longer active.", ephemeral=True
             )
+            return
+        if submission.get("status", "pending") != "pending":
+            await interaction.response.send_message(
+                "This application has already been decided.", ephemeral=True
+            )
+            return
+        if not approved:
+            # Denials carry a reason to the applicant — collect it before deciding.
+            await interaction.response.send_modal(DenyReasonModal(self, submission))
+            return
+        await self._finalize(interaction, submission, approved=True)
+
+    async def _finalize(
+        self,
+        interaction: discord.Interaction,
+        submission: dict,
+        approved: bool,
+        reason: str = "",
+    ) -> None:
+        if not await self._check_reviewer(interaction):
             return
         if submission.get("status", "pending") != "pending":
             await interaction.response.send_message(
@@ -576,9 +615,10 @@ class ApplicationReviewView(discord.ui.View):
             applicant = interaction.client.get_user(submission["user_id"])
             if applicant is None:
                 applicant = await interaction.client.fetch_user(submission["user_id"])
-            await applicant.send(
-                f"Your application for **{submission['title']}** was {word}."
-            )
+            dm = f"Your application for **{submission['title']}** was {word}."
+            if not approved:
+                dm += f"\n\n**Reason from staff:** {reason or 'No reason was given.'}"
+            await applicant.send(dm)
         except discord.HTTPException:
             dm_failed = True
         if dm_failed and thread is not None:
@@ -595,6 +635,31 @@ class ApplicationReviewView(discord.ui.View):
                     "check my Manage Threads permission.",
                     ephemeral=True,
                 )
+
+
+class DenyReasonModal(discord.ui.Modal, title="Deny application"):
+    """Collects the reason DMed to the applicant, without naming the reviewer."""
+
+    def __init__(self, view: ApplicationReviewView, submission: dict):
+        super().__init__()
+        self.view = view
+        self.submission = submission
+        self.reason_input = discord.ui.TextInput(
+            label="Reason (sent to the applicant)",
+            style=discord.TextStyle.paragraph,
+            max_length=1000,
+            required=True,
+            placeholder="Sent anonymously as 'from staff'.",
+        )
+        self.add_item(self.reason_input)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await self.view._finalize(
+            interaction,
+            self.submission,
+            approved=False,
+            reason=self.reason_input.value.strip(),
+        )
 
 
 def _find_submission(message_id: int) -> dict | None:
@@ -638,7 +703,7 @@ async def refresh_panels(bot: discord.Client) -> None:
 
 
 class ApplicationsSetupView(AdminOnlyView):
-    """Applications setup: channels, create, manage."""
+    """Applications setup: panel channel, reviewer role, create and manage apps."""
 
     def __init__(self, guild: discord.Guild):
         super().__init__(timeout=1800)
@@ -649,12 +714,6 @@ class ApplicationsSetupView(AdminOnlyView):
             and guild.get_channel(config["applications_post_channel_id"])
             else []
         )
-        review_default = (
-            [guild.get_channel(config["applications_review_channel_id"])]
-            if config["applications_review_channel_id"]
-            and guild.get_channel(config["applications_review_channel_id"])
-            else []
-        )
         self.post_select = discord.ui.ChannelSelect(
             placeholder="Post channel (Apply panels)",
             channel_types=[discord.ChannelType.text],
@@ -662,14 +721,6 @@ class ApplicationsSetupView(AdminOnlyView):
             max_values=1,
             row=0,
             default_values=post_default,
-        )
-        self.review_select = discord.ui.ChannelSelect(
-            placeholder="Review channel (submissions + threads)",
-            channel_types=[discord.ChannelType.text],
-            min_values=1,
-            max_values=1,
-            row=1,
-            default_values=review_default,
         )
         reviewer_default = (
             [guild.get_role(config["applications_reviewer_role_id"])]
@@ -681,10 +732,10 @@ class ApplicationsSetupView(AdminOnlyView):
             placeholder="Role that can approve or deny",
             min_values=1,
             max_values=1,
-            row=2,
+            row=1,
             default_values=reviewer_default,
         )
-        for select in (self.post_select, self.review_select, self.reviewer_select):
+        for select in (self.post_select, self.reviewer_select):
             select.callback = self._ack
             self.add_item(select)
         for label, style, callback in (
@@ -693,7 +744,7 @@ class ApplicationsSetupView(AdminOnlyView):
             ("Manage applications", discord.ButtonStyle.grey, self._manage),
             ("← Back", discord.ButtonStyle.grey, self._back),
         ):
-            button = discord.ui.Button(label=label, style=style, row=3)
+            button = discord.ui.Button(label=label, style=style, row=2)
             button.callback = callback
             self.add_item(button)
 
@@ -703,18 +754,15 @@ class ApplicationsSetupView(AdminOnlyView):
 
     async def _save(self, interaction: discord.Interaction) -> None:
         posts = self.post_select.values or self.post_select.default_values
-        reviews = self.review_select.values or self.review_select.default_values
         reviewers = self.reviewer_select.values or self.reviewer_select.default_values
-        if not posts or not reviews or not reviewers:
+        if not posts or not reviewers:
             await interaction.response.send_message(
-                "Pick a post channel, a review channel and the reviewer role first.",
-                ephemeral=True,
+                "Pick the post channel and the reviewer role first.", ephemeral=True
             )
             return
         post = self.guild.get_channel(posts[0].id)
-        review = self.guild.get_channel(reviews[0].id)
         reviewer = self.guild.get_role(reviewers[0].id)
-        if post is None or review is None or reviewer is None:
+        if post is None or reviewer is None:
             await interaction.response.send_message(
                 "Something picked here no longer exists — pick it again.", ephemeral=True
             )
@@ -722,7 +770,6 @@ class ApplicationsSetupView(AdminOnlyView):
         await interaction.response.defer()
         old_post_id = config["applications_post_channel_id"]
         config["applications_post_channel_id"] = post.id
-        config["applications_review_channel_id"] = review.id
         config["applications_reviewer_role_id"] = reviewer.id
         save()
         note = ""
@@ -748,8 +795,7 @@ class ApplicationsSetupView(AdminOnlyView):
             save()
         await interaction.edit_original_response(
             content=(
-                f"Saved. Panels post in {post.mention}; submissions go to {review.mention}, "
-                f"reviewed with {reviewer.name}.{note}"
+                f"Saved. Panels post in {post.mention}, reviewed with {reviewer.name}.{note}"
             ),
             view=ApplicationsSetupView(self.guild),
         )
@@ -760,12 +806,7 @@ class ApplicationsSetupView(AdminOnlyView):
             if config["applications_post_channel_id"]
             else None
         )
-        review = (
-            self.guild.get_channel(config["applications_review_channel_id"])
-            if config["applications_review_channel_id"]
-            else None
-        )
-        if post is None or review is None:
+        if post is None:
             await interaction.response.send_message(
                 "Save the setup first.", ephemeral=True
             )
@@ -804,13 +845,35 @@ class ApplicationBuilderView(AdminOnlyView):
             self.title = ""
             self.description = ""
             self.min_role_id: int | None = None
+            # New apps start at the old global channel, when one was configured before.
+            self.review_channel_id: int | None = config["applications_review_channel_id"]
+            self.ping_role_ids: list[int] = []
             self.questions: list[dict] = []
         else:
             self.app_id, app = existing
             self.title = app["title"]
             self.description = app["description"]
             self.min_role_id = app.get("min_role_id")
+            self.review_channel_id = (
+                app.get("review_channel_id") or config["applications_review_channel_id"]
+            )
+            self.ping_role_ids = list(app.get("ping_role_ids", []))
             self.questions = copy.deepcopy(app["questions"])
+        channel_default = (
+            [guild.get_channel(self.review_channel_id)]
+            if self.review_channel_id and guild.get_channel(self.review_channel_id)
+            else []
+        )
+        self.channel_select = discord.ui.ChannelSelect(
+            placeholder="Channel that receives submissions",
+            channel_types=[discord.ChannelType.text],
+            min_values=1,
+            max_values=1,
+            row=0,
+            default_values=channel_default,
+        )
+        self.channel_select.callback = self._channel_chosen
+        self.add_item(self.channel_select)
         role_default = (
             [guild.get_role(self.min_role_id)]
             if self.min_role_id and guild.get_role(self.min_role_id)
@@ -820,19 +883,33 @@ class ApplicationBuilderView(AdminOnlyView):
             placeholder="Role required to apply",
             min_values=1,
             max_values=1,
-            row=0,
+            row=1,
             default_values=role_default,
         )
         self.role_select.callback = self._role_chosen
         self.add_item(self.role_select)
-        for label, style, row, callback in (
-            ("Title & description", discord.ButtonStyle.blurple, 1, self._metadata),
-            ("Add question", discord.ButtonStyle.green, 1, self._add_question),
-            ("Remove question", discord.ButtonStyle.grey, 1, self._remove_question),
-            ("Save application", discord.ButtonStyle.green, 2, self._save),
-            ("Cancel", discord.ButtonStyle.grey, 2, self._cancel),
+        ping_default = [
+            role
+            for role in (guild.get_role(rid) for rid in self.ping_role_ids)
+            if role is not None
+        ][:25]
+        self.ping_select = discord.ui.RoleSelect(
+            placeholder="Roles to ping when a submission arrives",
+            min_values=0,
+            max_values=25,
+            row=2,
+            default_values=ping_default,
+        )
+        self.ping_select.callback = self._ping_roles_chosen
+        self.add_item(self.ping_select)
+        for label, style, callback in (
+            ("Title & description", discord.ButtonStyle.blurple, self._metadata),
+            ("Add question", discord.ButtonStyle.green, self._add_question),
+            ("Remove question", discord.ButtonStyle.grey, self._remove_question),
+            ("Save application", discord.ButtonStyle.green, self._save),
+            ("Cancel", discord.ButtonStyle.grey, self._cancel),
         ):
-            button = discord.ui.Button(label=label, style=style, row=row)
+            button = discord.ui.Button(label=label, style=style, row=3)
             button.callback = callback
             self.add_item(button)
             if label == "Remove question":
@@ -841,10 +918,19 @@ class ApplicationBuilderView(AdminOnlyView):
 
     def summary(self) -> str:
         role = self.guild.get_role(self.min_role_id) if self.min_role_id else None
+        channel = (
+            self.guild.get_channel(self.review_channel_id)
+            if self.review_channel_id
+            else None
+        )
+        ping_roles = [self.guild.get_role(rid) for rid in self.ping_role_ids]
+        ping_text = ", ".join(role.name for role in ping_roles if role) or "*none*"
         lines = [
             f"**{'Edit' if self.app_id else 'New'} application**",
             f"**Title:** {self.title or '*not set*'}",
             f"**Required role:** {role.name if role else '*not set*'}",
+            f"**Submission channel:** {channel.mention if channel else '*not set*'}",
+            f"**Ping roles:** {ping_text}",
             f"**Description:** {self.description or '*not set*'}",
             "**Questions:**",
         ]
@@ -859,10 +945,20 @@ class ApplicationBuilderView(AdminOnlyView):
                 lines.append(f"{index}. [text] {question['text']}")
         return "\n".join(lines)[:2000]
 
+    async def _channel_chosen(self, interaction: discord.Interaction) -> None:
+        channels = self.channel_select.values
+        if channels:
+            self.review_channel_id = channels[0].id
+        await interaction.response.edit_message(content=self.summary(), view=self)
+
     async def _role_chosen(self, interaction: discord.Interaction) -> None:
         roles = self.role_select.values
         if roles:
             self.min_role_id = roles[0].id
+        await interaction.response.edit_message(content=self.summary(), view=self)
+
+    async def _ping_roles_chosen(self, interaction: discord.Interaction) -> None:
+        self.ping_role_ids = [role.id for role in self.ping_select.values]
         await interaction.response.edit_message(content=self.summary(), view=self)
 
     async def _metadata(self, interaction: discord.Interaction) -> None:
@@ -900,6 +996,16 @@ class ApplicationBuilderView(AdminOnlyView):
                 "Add at least one question.", ephemeral=True
             )
             return
+        review_channel = (
+            self.guild.get_channel(self.review_channel_id)
+            if self.review_channel_id
+            else None
+        )
+        if review_channel is None:
+            await interaction.response.send_message(
+                "Pick the channel that receives submissions.", ephemeral=True
+            )
+            return
         post = (
             self.guild.get_channel(config["applications_post_channel_id"])
             if config["applications_post_channel_id"]
@@ -907,7 +1013,7 @@ class ApplicationBuilderView(AdminOnlyView):
         )
         if post is None:
             await interaction.response.send_message(
-                "The post channel is missing — save the channels again.", ephemeral=True
+                "The post channel is missing — save the setup again.", ephemeral=True
             )
             return
         await interaction.response.defer()
@@ -917,6 +1023,8 @@ class ApplicationBuilderView(AdminOnlyView):
                 "title": title,
                 "description": description,
                 "min_role_id": self.min_role_id,
+                "review_channel_id": review_channel.id,
+                "ping_role_ids": list(self.ping_role_ids),
                 "questions": copy.deepcopy(self.questions),
                 "panel_message_id": None,
             }
@@ -954,6 +1062,8 @@ class ApplicationBuilderView(AdminOnlyView):
                 "title": title,
                 "description": description,
                 "min_role_id": self.min_role_id,
+                "review_channel_id": review_channel.id,
+                "ping_role_ids": list(self.ping_role_ids),
                 "questions": copy.deepcopy(self.questions),
             }
         )

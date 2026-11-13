@@ -30,7 +30,7 @@ _DEFAULTS = {
     "modmail_alerts": {},  # str(modmail_channel_id) -> [moderator ids pinged on user replies]
     "modmail_history": {},  # str(user_id) -> [{"thread": forum thread id, "title": ...}]
     "applications_post_channel_id": None,  # public channel holding the Apply panels
-    "applications_review_channel_id": None,  # staff channel receiving submissions + threads
+    "applications_review_channel_id": None,  # legacy fallback for apps without their own channel
     "applications_reviewer_role_id": None,  # role that can approve/deny submissions
     "applications": {},  # str(app_id) -> app definition + panel_message_id
     "application_submissions": {},  # str(thread_id) -> submission record + status
