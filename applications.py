@@ -79,6 +79,8 @@ def build_submission_embeds(sub: dict) -> list[discord.Embed]:
         ("Applicant", f"{sub.get('user_name', 'Unknown')} ({sub['user_id']})"),
         ("Status", status_text),
     ]
+    if status == "denied":
+        fields.append(("Reason", sub.get("deny_reason") or "No reason was given."))
     for index, (question, answer) in enumerate(sub["answers"], 1):
         fields.append((f"{index}. {question}", answer))
     return _pack_embeds(sub.get("title", "Application"), sub.get("description", ""), fields, color)
@@ -188,6 +190,15 @@ async def handle_dm(message: discord.Message) -> bool:
     if content.lower() == "cancel":
         _sessions.pop(message.author.id, None)
         await message.channel.send("Application cancelled.")
+        return True
+    if any(
+        (attachment.content_type or "").startswith("image/")
+        for attachment in message.attachments
+    ):
+        await message.channel.send(
+            "Please send a link to the image instead — attachments can't be included "
+            "in applications."
+        )
         return True
     if session["state"] == "text":
         if not content:
@@ -376,6 +387,11 @@ class ApplicationConfirmView(discord.ui.View):
                 view=None,
             )
             return
+        try:
+            # Keep the submission embed visible at the top of the thread.
+            await thread_message.pin()
+        except discord.HTTPException:
+            pass
         submission["channel_message_id"] = message.id
         submission["thread_id"] = thread.id
         submission["thread_message_id"] = thread_message.id
@@ -574,6 +590,8 @@ class ApplicationReviewView(discord.ui.View):
         submission["status"] = "approved" if approved else "denied"
         submission["reviewer_id"] = interaction.user.id
         submission["reviewer_name"] = interaction.user.display_name
+        if not approved:
+            submission["deny_reason"] = reason
         save()
         guild = interaction.guild
         embeds = build_submission_embeds(submission)

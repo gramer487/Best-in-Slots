@@ -29,11 +29,13 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    gets its own embed with an **Apply** button in the post channel. Applying starts a DM
    conversation: the bot asks the questions one at a time (multiple choice uses a
    dropdown), shows a summary and asks for confirmation, then posts the answers to that
-   application's submission channel, pinging its ping roles. The submission also gets a
-   private thread with the same embed and **Approve**/**Deny** buttons (plus ✅/❌
-   reactions). Only the reviewer role picked in setup (or administrators) can decide;
-   denying opens a modal for a reason, which the applicant receives by DM as an anonymous
-   "from staff" note. A decision edits the in-thread embed to say approved or denied and
+   application's submission channel, pinging its ping roles. Images sent in the DM are
+   refused with a reply asking for a link instead; attachments are never included. The
+   submission also gets a private thread with the same embed and **Approve**/**Deny**
+   buttons (plus ✅/❌ reactions), and that thread copy is pinned. Only the reviewer role
+   picked in setup (or administrators) can decide; denying opens a modal for a reason,
+   which the applicant receives by DM as an anonymous "from staff" note and which is
+   also shown in the thread embed. A decision edits the in-thread embed to say approved or denied and
    who decided, deletes the post in the submission channel, DMs the applicant and
    locks/archives the thread, which stays available with its history.
 6. **Tags** — moderators use `/tag create name:test` to store a message behind `.test`;
@@ -190,10 +192,11 @@ channels), **Manage Roles** (change their permission overwrites), **Move Members
 the joiner into their new channel) and **Send Messages** in the voice channels (that's
 where it posts the control panel).
 
-For the applications review channel the bot needs View Channel, Send Messages, Embed Links,
-Read Message History, Add Reactions, Create Public Threads, Send Messages in Threads and
-Manage Threads (the last one to archive and lock decided threads). The post channel only
-needs View Channel, Send Messages and Embed Links.
+For the applications submission channels the bot needs View Channel, Send Messages, Embed
+Links, Read Message History, Add Reactions, Manage Messages (to pin the submission in its
+thread), Create Public Threads, Send Messages in Threads and Manage Threads (the last one
+to archive and lock decided threads). The post channel only needs View Channel, Send
+Messages and Embed Links.
 
 Applicants must accept DMs from server members — the questionnaire runs in DMs, and the bot
 tells them to open their DMs if it can't send the first question.
