@@ -42,6 +42,7 @@ _DEFAULTS = {
     "giveaway_channel_id": None,  # default channel giveaways are posted in
     "giveaway_ping_role_id": None,  # role pinged for each new giveaway
     "giveaway_manager_role_id": None,  # role that can create and manage giveaways
+    "giveaway_blacklist_role_id": None,  # role whose members cannot enter giveaways
     "giveaway_log_channel_id": None,  # channel that logs every created giveaway
     "giveaways": {},  # str(giveaway_id) -> giveaway record, entries and winners
     "giveaway_role_tiers": [  # three roles auto-assigned by giveaway host points

@@ -55,17 +55,20 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    with its title, host, value, winner count, end time, channel, who created it and a
    jump link. `/giveaway create` takes a title, duration (`30s`, `30m`, `2h`, `7d`),
    winner count, host, and a value (`150` or `150p` — the `p` is normalized away), plus
-   optional thumbnail and channel override. It posts a gold embed (title, host, winners,
-   entries) with an **Enter giveaway** button and pings the setup role. Entries are
-   batched in memory and written every five seconds, so a burst of hundreds of entries
-   stays fast. When the duration runs out — or a manager presses **End now** in
+   an optional image attachment and channel override. It posts a gold embed (title,
+   host, winners, entries, end time as a Discord timestamp) with the attached image as
+   the main embed image, an **Enter giveaway** button, and pings the setup role. Entries
+   are batched in memory and written every five seconds, so a burst of hundreds of
+   entries stays fast. Members with the role picked under **Blacklist role** in the
+   giveaway setup can't enter. When the duration runs out — or a manager presses **End now** in
    `/giveaway manage` — the embed turns red, lists the winners and DMs them, and the
    panel shows **Reroll winners** and **Mark as done**: reroll draws replacements from
    entrants who haven't won yet, and marking done awards the value to the host as points
-   and re-checks their role tier. `/gwinfo [user]` shows a user's points and lists their
-   giveaways; administrators can revoke (or restore) the points of a completed giveaway
-   there. `/gwroles` sets three roles and the points each needs; hosts automatically
-   receive the highest tier they qualify for when their points change.
+   and re-checks their role tier. Ending a giveaway early and marking it done also edit
+   the creation log entry to show who did it. `/gwinfo [user]` shows a user's points and
+   lists their giveaways; administrators can revoke (or restore) the points of a
+   completed giveaway there. `/gwroles` sets three roles and the points each needs; hosts
+   automatically receive the highest tier they qualify for when their points change.
 9. **Watermark** — `/watermark image:<file>` replies with a preview of the image with
    "This roll data relates to a specific build and may not be the best for your build"
    in gold (black outline) on a white square that hugs the bottom-right corner, plus a
@@ -182,8 +185,10 @@ who and when) to the fixed tag-log channel; tag uses are not logged.
      access to, then **Save voice setup**.
    - **Giveaways:** pick the channel that receives giveaways, the role pinged for each
      new giveaway, the role that can create and manage giveaways, and the channel that
-     logs every new giveaway, then **Save setup**. `/gwroles` configures the three
-     host-points roles separately.
+     logs every new giveaway, then **Save setup**. **Blacklist role →** opens a second
+     page for the optional role whose members can't enter giveaways (with **Clear
+     blacklist** to remove it). `/gwroles` configures the three host-points roles
+     separately.
 
 `/setup` is ephemeral by default; pass `ephemeral: false` to show the panel in the channel.
 Every setup page stays admin-only either way. Re-running the LFG setup deletes the old

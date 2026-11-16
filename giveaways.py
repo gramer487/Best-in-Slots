@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import io
 import random
 import re
 import uuid
@@ -137,8 +138,11 @@ def build_embed(giveaway: dict) -> discord.Embed:
         winners = str(giveaway["winner_count"])
     embed.add_field(name="Winners", value=winners, inline=True)
     embed.add_field(name="Entries", value=str(len(giveaway.get("entries", []))), inline=True)
-    if giveaway.get("thumbnail"):
-        embed.set_thumbnail(url=giveaway["thumbnail"])
+    ends = int(dt.datetime.fromisoformat(giveaway["ends_at"]).timestamp())
+    embed.add_field(name="Ends", value=f"<t:{ends}:R>", inline=True)
+    image = giveaway.get("image") or giveaway.get("thumbnail")
+    if image:
+        embed.set_image(url=image)
     return embed
 
 
@@ -160,17 +164,9 @@ async def _edit_embed(bot: discord.Client, giveaway: dict, view=discord.utils.MI
         pass
 
 
-async def log_giveaway(
-    bot: discord.Client, giveaway: dict, jump_url: str, created_by: discord.abc.User
-) -> None:
-    """Post the creation record to the configured giveaway log channel."""
-    channel = (
-        bot.get_channel(config["giveaway_log_channel_id"])
-        if config["giveaway_log_channel_id"]
-        else None
-    )
-    if channel is None:
-        return
+def build_log_embed(giveaway: dict) -> discord.Embed:
+    """The giveaway log entry, rebuilt from the record so it can be edited later."""
+    jump_url = giveaway.get("jump_url")
     ends = int(dt.datetime.fromisoformat(giveaway["ends_at"]).timestamp())
     embed = discord.Embed(
         title="Giveaway created",
@@ -178,18 +174,52 @@ async def log_giveaway(
         url=jump_url,
         timestamp=dt.datetime.now(dt.timezone.utc),
     )
-    embed.description = f"[Jump to giveaway]({jump_url})"
+    if jump_url:
+        embed.description = f"[Jump to giveaway]({jump_url})"
     embed.add_field(name="Title", value=giveaway["title"][:1024], inline=False)
     embed.add_field(name="Host", value=f"<@{giveaway['host_id']}>", inline=True)
     embed.add_field(name="Value", value=str(giveaway["value"]), inline=True)
     embed.add_field(name="Winners", value=str(giveaway["winner_count"]), inline=True)
     embed.add_field(name="Channel", value=f"<#{giveaway['channel_id']}>", inline=True)
     embed.add_field(name="Ends", value=f"<t:{ends}:R>", inline=True)
-    embed.add_field(name="Created by", value=f"<@{created_by.id}>", inline=True)
-    if giveaway.get("thumbnail"):
-        embed.set_thumbnail(url=giveaway["thumbnail"])
+    embed.add_field(name="Created by", value=f"<@{giveaway['created_by_id']}>", inline=True)
+    if giveaway.get("ended_by_id"):
+        embed.add_field(name="Ended early by", value=f"<@{giveaway['ended_by_id']}>", inline=True)
+    if giveaway.get("done_by_id"):
+        embed.add_field(name="Marked done by", value=f"<@{giveaway['done_by_id']}>", inline=True)
+    image = giveaway.get("image") or giveaway.get("thumbnail")
+    if image:
+        embed.set_image(url=image)
+    return embed
+
+
+async def log_giveaway(
+    bot: discord.Client, giveaway: dict, file: discord.File | None = None
+) -> discord.Message | None:
+    """Post the creation record to the configured giveaway log channel."""
+    channel = (
+        bot.get_channel(config["giveaway_log_channel_id"])
+        if config["giveaway_log_channel_id"]
+        else None
+    )
+    if channel is None:
+        return None
     try:
-        await channel.send(embed=embed)
+        return await channel.send(embed=build_log_embed(giveaway), file=file)
+    except discord.HTTPException:
+        return None
+
+
+async def _refresh_log(bot: discord.Client, giveaway: dict) -> None:
+    """Re-render the log entry after a manual end or a mark-done."""
+    channel = (
+        bot.get_channel(giveaway["log_channel_id"]) if giveaway.get("log_channel_id") else None
+    )
+    if channel is None or not giveaway.get("log_message_id"):
+        return
+    try:
+        message = await channel.fetch_message(giveaway["log_message_id"])
+        await message.edit(embed=build_log_embed(giveaway))
     except discord.HTTPException:
         pass
 
@@ -203,7 +233,12 @@ async def _dm_winners(bot: discord.Client, giveaway: dict) -> None:
             pass
 
 
-async def end_giveaway(bot: discord.Client, giveaway_id: str, giveaway: dict) -> list[int]:
+async def end_giveaway(
+    bot: discord.Client,
+    giveaway_id: str,
+    giveaway: dict,
+    ended_by: discord.abc.User | None = None,
+) -> list[int]:
     """Draw the winners, turn the embed red and DM them. Returns the winner ids."""
     entries = sorted(_entries(giveaway_id))
     winners = random.sample(entries, min(giveaway["winner_count"], len(entries)))
@@ -216,25 +251,35 @@ async def end_giveaway(bot: discord.Client, giveaway_id: str, giveaway: dict) ->
             "ended_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         }
     )
+    if ended_by is not None:
+        giveaway["ended_by_id"] = ended_by.id
     _dirty.discard(giveaway_id)
     save()
     view = GiveawayRerollView(giveaway_id)
     await _edit_embed(bot, giveaway, view)
     bot.add_view(view)
+    if ended_by is not None:
+        await _refresh_log(bot, giveaway)
     await _dm_winners(bot, giveaway)
     return winners
 
 
 async def mark_done(
-    bot: discord.Client, guild: discord.Guild, giveaway_id: str, giveaway: dict
+    bot: discord.Client,
+    guild: discord.Guild,
+    giveaway_id: str,
+    giveaway: dict,
+    done_by: discord.abc.User,
 ) -> bool:
     """Mark a decided giveaway done, award its points and refresh the host's roles."""
     giveaway["status"] = "done"
     giveaway["done_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    giveaway["done_by_id"] = done_by.id
     save()
     view = GiveawayRerollView(giveaway_id, done=True)
     await _edit_embed(bot, giveaway, view)
     bot.add_view(view)
+    await _refresh_log(bot, giveaway)
     return await apply_host_roles(guild, giveaway["host_id"])
 
 
@@ -284,6 +329,12 @@ class GiveawayEntryView(discord.ui.View):
         if not isinstance(interaction.user, discord.Member) or interaction.guild is None:
             await interaction.response.send_message(
                 "Enter from inside the server.", ephemeral=True
+            )
+            return
+        blacklist_id = config["giveaway_blacklist_role_id"]
+        if blacklist_id and any(role.id == blacklist_id for role in interaction.user.roles):
+            await interaction.response.send_message(
+                "You can't enter giveaways with your current roles.", ephemeral=True
             )
             return
         entries = _entries(self.giveaway_id)
@@ -345,7 +396,11 @@ class GiveawayRerollView(discord.ui.View):
             return
         await interaction.response.defer(ephemeral=True)
         roles_ok = await mark_done(
-            interaction.client, interaction.guild, self.giveaway_id, giveaway
+            interaction.client,
+            interaction.guild,
+            self.giveaway_id,
+            giveaway,
+            interaction.user,
         )
         note = "" if roles_ok else "\nCouldn't update the host's roles — check my role position."
         await interaction.followup.send(
@@ -444,7 +499,9 @@ class GiveawayManageView(discord.ui.View):
             )
             return
         await interaction.response.defer(ephemeral=True)
-        winners = await end_giveaway(interaction.client, self.selected, giveaway)
+        winners = await end_giveaway(
+            interaction.client, self.selected, giveaway, interaction.user
+        )
         winner_text = ", ".join(f"<@{uid}>" for uid in winners) or "no entries"
         await interaction.followup.send(
             f"Ended **{giveaway['title']}** — winners: {winner_text}", ephemeral=True
@@ -524,6 +581,7 @@ class GiveawaySetupView(permissions.AdminOnlyView):
             self.add_item(select)
         for label, style, callback in (
             ("Save setup", discord.ButtonStyle.green, self._save),
+            ("Blacklist role →", discord.ButtonStyle.secondary, self._blacklist),
             ("← Back", discord.ButtonStyle.grey, self._back),
         ):
             button = discord.ui.Button(label=label, style=style, row=4)
@@ -574,6 +632,92 @@ class GiveawaySetupView(permissions.AdminOnlyView):
         await interaction.response.edit_message(
             content="**Setup** — what do you want to configure?",
             view=SetupMenuView(self.guild),
+        )
+
+    async def _blacklist(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message(
+            content="**Giveaways setup** — pick the role that cannot enter giveaways.",
+            view=GiveawayBlacklistView(self.guild),
+        )
+
+
+class GiveawayBlacklistView(permissions.AdminOnlyView):
+    """Giveaway setup page 2: the role whose members cannot enter giveaways."""
+
+    def __init__(self, guild: discord.Guild):
+        super().__init__(timeout=1800)
+        self.guild = guild
+        default = (
+            [guild.get_role(config["giveaway_blacklist_role_id"])]
+            if config["giveaway_blacklist_role_id"]
+            and guild.get_role(config["giveaway_blacklist_role_id"])
+            else []
+        )
+        self.blacklist_select = discord.ui.RoleSelect(
+            placeholder="Role that cannot enter giveaways",
+            min_values=1,
+            max_values=1,
+            row=0,
+            default_values=default,
+        )
+        self.blacklist_select.callback = self._ack
+        self.add_item(self.blacklist_select)
+        save_button = discord.ui.Button(
+            label="Save blacklist", style=discord.ButtonStyle.green, row=1
+        )
+        save_button.callback = self._save
+        self.add_item(save_button)
+        clear_button = discord.ui.Button(
+            label="Clear blacklist", style=discord.ButtonStyle.secondary, row=1
+        )
+        clear_button.callback = self._clear
+        self.add_item(clear_button)
+        back_button = discord.ui.Button(
+            label="← Giveaways setup", style=discord.ButtonStyle.grey, row=1
+        )
+        back_button.callback = self._back
+        self.add_item(back_button)
+
+    async def _ack(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+
+    async def _back(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message(
+            content=(
+                "**Giveaways setup** — pick the giveaway channel, ping role, manager "
+                "role and log channel, then **Save setup**."
+            ),
+            view=GiveawaySetupView(self.guild),
+        )
+
+    async def _save(self, interaction: discord.Interaction) -> None:
+        roles = self.blacklist_select.values or self.blacklist_select.default_values
+        if not roles:
+            await interaction.response.send_message(
+                "Pick a blacklist role first.", ephemeral=True
+            )
+            return
+        role = self.guild.get_role(roles[0].id)
+        if role is None:
+            await interaction.response.send_message(
+                "That role no longer exists — pick it again.", ephemeral=True
+            )
+            return
+        await interaction.response.defer()
+        config["giveaway_blacklist_role_id"] = role.id
+        save()
+        await interaction.edit_original_response(
+            content=f"Saved. Members with {role.name} can't enter giveaways.",
+            view=GiveawayBlacklistView(self.guild),
+        )
+
+    async def _clear(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+        config["giveaway_blacklist_role_id"] = None
+        save()
+        await interaction.edit_original_response(
+            content="Cleared. Everyone can enter giveaways again.",
+            view=GiveawayBlacklistView(self.guild),
         )
 
 
@@ -713,7 +857,7 @@ giveaway_group = app_commands.Group(name="giveaway", description="Create and man
     winners="How many winners to draw",
     host="User hosting the giveaway (ID or mention)",
     value="Host points for this giveaway, for example 150 or 150p",
-    thumbnail="Optional thumbnail image URL",
+    image="Optional image attachment shown in the embed",
     channel="Optional channel override (defaults to the giveaway channel in setup)",
 )
 async def giveaway_create(
@@ -723,7 +867,7 @@ async def giveaway_create(
     winners: app_commands.Range[int, 1, 100],
     host: discord.User,
     value: str,
-    thumbnail: str | None = None,
+    image: discord.Attachment | None = None,
     channel: discord.TextChannel | None = None,
 ) -> None:
     if interaction.guild is None or not is_manager(interaction.user):
@@ -747,10 +891,9 @@ async def giveaway_create(
             "Value must be a positive number, like `150` or `150p`.", ephemeral=True
         )
         return
-    thumbnail = thumbnail.strip() if thumbnail else None
-    if thumbnail and not thumbnail.startswith(("http://", "https://")):
+    if image is not None and not (image.content_type or "").startswith("image/"):
         await interaction.response.send_message(
-            "The thumbnail must be an http(s) URL.", ephemeral=True
+            "The image must be an image file.", ephemeral=True
         )
         return
     target = channel or interaction.guild.get_channel(config["giveaway_channel_id"])
@@ -772,9 +915,11 @@ async def giveaway_create(
         "host_id": host.id,
         "value": points,
         "winner_count": winners,
-        "thumbnail": thumbnail,
+        "image": None,
         "channel_id": target.id,
         "message_id": None,
+        "jump_url": None,
+        "created_by_id": interaction.user.id,
         "created_at": now.isoformat(),
         "ends_at": (now + length).isoformat(),
         "status": "active",
@@ -785,11 +930,28 @@ async def giveaway_create(
     # Store it before posting so the first click already finds the giveaway.
     config["giveaways"][giveaway_id] = giveaway
     await interaction.response.defer(ephemeral=True)
+    # Upload the image with each message and reference it as attachment:// so the
+    # embed keeps working long after Discord's signed attachment URLs expire.
+    image_file = None
+    log_file = None
+    if image is not None:
+        try:
+            data = await image.read()
+        except discord.HTTPException:
+            config["giveaways"].pop(giveaway_id, None)
+            await interaction.followup.send(
+                "Couldn't download that attachment — try again.", ephemeral=True
+            )
+            return
+        giveaway["image"] = f"attachment://{image.filename}"
+        image_file = discord.File(io.BytesIO(data), filename=image.filename)
+        log_file = discord.File(io.BytesIO(data), filename=image.filename)
     try:
         message = await target.send(
             content=role.mention if role else None,
             embed=build_embed(giveaway),
             view=GiveawayEntryView(giveaway_id),
+            file=image_file,
             allowed_mentions=discord.AllowedMentions(
                 everyone=False, roles=[role] if role else [], users=False
             ),
@@ -802,9 +964,13 @@ async def giveaway_create(
         )
         return
     giveaway["message_id"] = message.id
+    giveaway["jump_url"] = message.jump_url
+    log_message = await log_giveaway(interaction.client, giveaway, log_file)
+    if log_message is not None:
+        giveaway["log_channel_id"] = config["giveaway_log_channel_id"]
+        giveaway["log_message_id"] = log_message.id
     save()
     interaction.client.add_view(GiveawayEntryView(giveaway_id))
-    await log_giveaway(interaction.client, giveaway, message.jump_url, interaction.user)
     await interaction.followup.send(
         f"Giveaway started in {target.mention}: {message.jump_url}", ephemeral=True
     )
