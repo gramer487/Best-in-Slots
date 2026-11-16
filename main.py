@@ -12,6 +12,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 import applications
+import giveaways
 import modmail
 import permissions
 import suggestions
@@ -101,6 +102,7 @@ async def on_ready():
     bot.add_view(LfgPanelView())
     bot.add_view(voicehub.VoiceControlView())
     applications.register_views(bot)
+    giveaways.register(bot)
     try:
         await applications.refresh_panels(bot)
     except Exception as e:
@@ -144,6 +146,8 @@ async def on_ready():
         expire_threads.start()
     if not check_modmail_closes.is_running():
         check_modmail_closes.start()
+    if not giveaway_tick.is_running():
+        giveaway_tick.start()
     global _status_task
     if _status_task is None or _status_task.done():
         _status_task = bot.loop.create_task(status_task())
@@ -205,6 +209,12 @@ async def expire_threads():
 async def check_modmail_closes():
     """Close scheduled modmails when due (and warn their users 10 minutes before)."""
     await modmail.process_scheduled_closes(bot)
+
+
+@tasks.loop(seconds=5)
+async def giveaway_tick():
+    """Batch giveaway entries, refresh their counts and end giveaways when due."""
+    await giveaways.tick(bot)
 
 
 async def status_task():

@@ -50,7 +50,23 @@ A single-server Discord bot with LFG panels, a world state embed and modmail.
    role chosen in setup, so the owner keeps access. A channel is deleted once everyone
    leaves it. An optional log channel keeps one embed per created channel, edited with
    every creation and button press.
-8. **Watermark** — `/watermark image:<file>` replies with a preview of the image with
+8. **Giveaways** — administrators set the giveaway channel, log channel, ping role and
+   manager role in `/setup` → **Giveaways**. Every creation is logged in the log channel
+   with its title, host, value, winner count, end time, channel, who created it and a
+   jump link. `/giveaway create` takes a title, duration (`30s`, `30m`, `2h`, `7d`),
+   winner count, host, and a value (`150` or `150p` — the `p` is normalized away), plus
+   optional thumbnail and channel override. It posts a gold embed (title, host, winners,
+   entries) with an **Enter giveaway** button and pings the setup role. Entries are
+   batched in memory and written every five seconds, so a burst of hundreds of entries
+   stays fast. When the duration runs out — or a manager presses **End now** in
+   `/giveaway manage` — the embed turns red, lists the winners and DMs them, and the
+   panel shows **Reroll winners** and **Mark as done**: reroll draws replacements from
+   entrants who haven't won yet, and marking done awards the value to the host as points
+   and re-checks their role tier. `/gwinfo [user]` shows a user's points and lists their
+   giveaways; administrators can revoke (or restore) the points of a completed giveaway
+   there. `/gwroles` sets three roles and the points each needs; hosts automatically
+   receive the highest tier they qualify for when their points change.
+9. **Watermark** — `/watermark image:<file>` replies with a preview of the image with
    "This roll data relates to a specific build and may not be the best for your build"
    in gold (black outline) on a white square that hugs the bottom-right corner, plus a
    large gray diagonal "discord.gg/bestinslots" watermark at 30% opacity, rotated to
@@ -164,6 +180,10 @@ who and when) to the fixed tag-log channel; tag uses are not logged.
    - **VC create:** pick the voice channel that creates personal channels, an optional
      text channel for its activity log, and the role that **Lock** and **Hide** deny
      access to, then **Save voice setup**.
+   - **Giveaways:** pick the channel that receives giveaways, the role pinged for each
+     new giveaway, the role that can create and manage giveaways, and the channel that
+     logs every new giveaway, then **Save setup**. `/gwroles` configures the three
+     host-points roles separately.
 
 `/setup` is ephemeral by default; pass `ephemeral: false` to show the panel in the channel.
 Every setup page stays admin-only either way. Re-running the LFG setup deletes the old
@@ -201,6 +221,12 @@ Messages and Embed Links.
 Applicants must accept DMs from server members — the questionnaire runs in DMs, and the bot
 tells them to open their DMs if it can't send the first question.
 
+For the giveaway channel the bot needs View Channel, Send Messages, Embed Links and
+Read Message History (it edits the original post for entry counts, ending and rerolls).
+The giveaway log channel needs View Channel, Send Messages and Embed Links. Assigning
+the `/gwroles` tiers needs **Manage Roles**, with the bot's highest role above the three
+tier roles.
+
 ## Files
 
 - `main.py` — bot wiring, thread expiry loop, message cleanup, `/setup` command.
@@ -215,6 +241,8 @@ tells them to open their DMs if it can't send the first question.
   server invite.
 - `applications.py` — application builder, Apply panels, DM questionnaire, submission
   review threads with Approve/Deny.
+- `giveaways.py` — `/giveaway` commands, `/gwinfo`, the `/gwroles` tier panel, entry and
+  reroll panels, batched entries and the tick that ends due giveaways.
 - `weapons.json` — weapon list (display names) used by the `/suggestion` autocomplete.
 - `worldstate.py` — browse.wf world state fetcher (arbitration schedule + fissures).
 - `config.py` — JSON config load/save (`config.json`).

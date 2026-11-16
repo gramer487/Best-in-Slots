@@ -10,6 +10,7 @@ import discord
 
 from applications import ApplicationsSetupView
 from config import config, save
+from giveaways import GiveawaySetupView
 from modmail import ModmailSetupView
 from permissions import AdminOnlyView
 from suggestions import SuggestionSetupView
@@ -777,6 +778,13 @@ class SetupMenuView(AdminOnlyView):
             content="**Voice setup** — pick the hub voice channel, the activity log "
             "and the role Lock/Hide deny.",
             view=VoiceSetupView(interaction.guild),
+        )
+
+    @discord.ui.button(label="Giveaways", style=discord.ButtonStyle.blurple, emoji="🎉", row=1)
+    async def giveaways(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(
+            content="**Giveaway setup** — channel, ping role and the role that manages giveaways.",
+            view=GiveawaySetupView(interaction.guild),
         )
 
 
