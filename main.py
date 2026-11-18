@@ -107,9 +107,10 @@ async def on_ready():
         await applications.refresh_panels(bot)
     except Exception as e:
         print(f"Application panel refresh failed: {e}")
+    presence = config["presence"]
     await bot.change_presence(
         activity=discord.Activity(
-            type=discord.ActivityType.watching, name="do /suggestion for BiS req"
+            type=discord.ActivityType[presence["type"]], name=presence["text"]
         )
     )
     if channel is None:
@@ -482,6 +483,47 @@ async def openthread(
     else:
         result = f"A modmail with {target.name} ({target.id}) is already open: {channel.mention}"
     await interaction.followup.send(result + dm_note, ephemeral=ephemeral)
+
+
+@bot.tree.command(name="presence", description="Change what the bot is doing (its presence)")
+@app_commands.describe(
+    text="What the bot should be shown doing",
+    activity="Activity type (default: Watching)",
+)
+@app_commands.choices(
+    activity=[
+        app_commands.Choice(name="Playing", value="playing"),
+        app_commands.Choice(name="Watching", value="watching"),
+        app_commands.Choice(name="Listening", value="listening"),
+        app_commands.Choice(name="Competing", value="competing"),
+    ]
+)
+async def presence(
+    interaction: discord.Interaction,
+    text: str,
+    activity: app_commands.Choice[str] | None = None,
+) -> None:
+    if not permissions.is_admin(interaction.user):
+        await interaction.response.send_message(
+            "You need the Administrator permission or the configured admin role to use this.",
+            ephemeral=True,
+        )
+        return
+    kind = activity.value if activity is not None else "watching"
+    text = text.strip()[:128]
+    if not text:
+        await interaction.response.send_message(
+            "Give the bot something to show.", ephemeral=True
+        )
+        return
+    config["presence"] = {"type": kind, "text": text}
+    save()
+    await bot.change_presence(
+        activity=discord.Activity(type=discord.ActivityType[kind], name=text)
+    )
+    await interaction.response.send_message(
+        f"Presence set to **{kind.capitalize()} {text}**.", ephemeral=True
+    )
 
 
 @bot.tree.error

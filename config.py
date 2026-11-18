@@ -7,6 +7,7 @@ from pathlib import Path
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
 _DEFAULTS = {
+    "presence": {"type": "watching", "text": "do /suggestion for BiS req"},
     "guild_id": None,
     "channel_id": None,
     "panel_message_id": None,
