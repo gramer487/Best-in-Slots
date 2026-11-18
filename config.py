@@ -29,6 +29,7 @@ _DEFAULTS = {
     "modmail_closes": {},  # str(channel_id) -> {"user_id", "close_at": iso, "warned": bool}
     "modmail_alerts": {},  # str(modmail_channel_id) -> [moderator ids pinged on user replies]
     "modmail_history": {},  # str(user_id) -> [{"thread": forum thread id, "title": ...}]
+    "modmail_last_reply": {},  # str(channel_id) -> ids of the last reply and its moderator
     "applications_post_channel_id": None,  # public channel holding the Apply panels
     "applications_review_channel_id": None,  # legacy fallback for apps without their own channel
     "applications_reviewer_role_id": None,  # role that can approve/deny submissions

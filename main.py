@@ -311,6 +311,19 @@ async def on_voice_state_update(member, before, after):
     await voicehub.handle_voice_state(member, before, after)
 
 
+@bot.event
+async def on_typing(channel, user, when):
+    """Show the bot's typing indicator in the user's modmail channel while they type in DMs."""
+    if isinstance(channel, discord.DMChannel):
+        await modmail.handle_typing(bot, user)
+
+
+@bot.event
+async def on_member_remove(member):
+    """Let staff know when a modmail's user leaves the server."""
+    await modmail.handle_member_remove(member)
+
+
 @bot.tree.command(name="setup", description="Open the bot setup panel")
 @app_commands.describe(ephemeral="Only you can see the setup panel (default: yes)")
 async def setup(interaction: discord.Interaction, ephemeral: bool = True):
@@ -454,7 +467,8 @@ async def openthread(
         )
         return
     if created:
-        await modmail.announce_new_channel(channel, target)
+        # A staff-initiated mail shouldn't ping the modmail ping roles.
+        await modmail.announce_new_channel(channel, target, ping=False)
     try:
         await target.send(
             "A moderator would like to speak with you. "

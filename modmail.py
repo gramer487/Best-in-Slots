@@ -69,6 +69,7 @@ async def ensure_modmail_channel(
         if channel is not None:
             return channel, False
         config["modmails"].pop(str(member.id), None)
+        config["modmail_last_reply"].pop(str(existing), None)
         save()
     try:
         category = await _ensure_category(guild)
@@ -85,14 +86,16 @@ async def ensure_modmail_channel(
     return channel, True
 
 
-async def announce_new_channel(channel: discord.TextChannel, member: discord.Member) -> None:
+async def announce_new_channel(
+    channel: discord.TextChannel, member: discord.Member, *, ping: bool = True
+) -> None:
     """First message in the channel: who they are, past mails, and the commands."""
     guild = channel.guild
     embed = discord.Embed(
         title=f"New modmail from {member.name}",
         description=(
-            "Reply with `&reply <message>` (or `&r`) — close with `&close` or the button. "
-            "`&alert` pings you on every user reply."
+            "Reply with `&reply <message>` (or `&r`) — `&edit <message>` fixes the last "
+            "reply — close with `&close` or the button. `&alert` pings you on every user reply."
         ),
         color=discord.Color.blurple(),
     )
@@ -119,7 +122,9 @@ async def announce_new_channel(channel: discord.TextChannel, member: discord.Mem
             for entry in history
         )
         embed.add_field(name="Past modmails", value=links[:1024], inline=False)
-    ping_roles = [r for rid in config["modmail_ping_roles"] if (r := guild.get_role(rid))]
+    ping_roles = (
+        [r for rid in config["modmail_ping_roles"] if (r := guild.get_role(rid))] if ping else []
+    )
     await channel.send(
         content=" ".join(r.mention for r in ping_roles) or None,
         embed=embed,
@@ -140,6 +145,39 @@ def _reply_embed(moderator_name: str, text: str) -> discord.Embed:
         description=text[:4096],
         color=discord.Color.green(),
     )
+
+
+async def handle_typing(bot: discord.Client, user: discord.abc.User) -> None:
+    """Show the bot's typing indicator in the user's modmail channel."""
+    if user.bot:
+        return
+    guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
+    if guild is None:
+        return
+    channel_id = config["modmails"].get(str(user.id))
+    channel = guild.get_channel(channel_id) if channel_id else None
+    if not isinstance(channel, discord.TextChannel):
+        return
+    try:
+        async with channel.typing():
+            pass
+    except discord.HTTPException:
+        pass
+
+
+async def handle_member_remove(member: discord.Member) -> None:
+    """Tell staff when a modmail's user leaves the server mid-conversation."""
+    channel_id = config["modmails"].get(str(member.id))
+    channel = member.guild.get_channel(channel_id) if channel_id else None
+    if not isinstance(channel, discord.TextChannel):
+        return
+    try:
+        await channel.send(
+            f"⚠️ {member.name} ({member.id}) is no longer in the server — "
+            "their messages can't be relayed to this modmail anymore."
+        )
+    except discord.HTTPException:
+        pass
 
 
 class ModmailPanelView(discord.ui.View):
@@ -308,24 +346,31 @@ def _format_delay(delta: dt.timedelta) -> str:
 async def _notify_closing(
     channel: discord.TextChannel, user_id: str, remaining: dt.timedelta
 ) -> None:
-    """DM the opener that the scheduled close is soon; tell staff if it fails."""
+    """Warn staff and DM the opener that the scheduled close is soon."""
     member = channel.guild.get_member(int(user_id))
     if member is None:
         try:
             member = await channel.guild.fetch_member(int(user_id))
         except discord.HTTPException:
             member = None
+    delivered = False
     if member is not None:
         try:
             await member.send(
                 f"This modmail will close in {_format_delay(remaining)} unless you reply. "
-                "Any message keeps it open."
+                "A reply keeps it open."
             )
-            return
+            delivered = True
         except discord.HTTPException:
             pass
+    notice = (
+        f"⏳ This modmail closes in {_format_delay(remaining)} unless someone replies."
+        if delivered
+        else f"⏳ This modmail closes in {_format_delay(remaining)} unless someone replies. "
+        "Couldn't DM the user about it."
+    )
     try:
-        await channel.send("Couldn't DM the user about the upcoming close.")
+        await channel.send(notice)
     except discord.HTTPException:
         pass
 
@@ -341,7 +386,7 @@ async def schedule_close(
     config["modmail_closes"][str(channel.id)] = entry
     save()
     await channel.send(
-        f"This modmail will close in {_format_delay(delay)} unless a new message is sent."
+        f"This modmail will close in {_format_delay(delay)} unless the user or a moderator replies."
     )
     if delay <= _WARN_BEFORE:
         entry["warned"] = True
@@ -350,7 +395,7 @@ async def schedule_close(
 
 
 async def cancel_scheduled_close(channel: discord.TextChannel) -> None:
-    """Any new message on either side keeps the modmail open."""
+    """A user message or a moderator &reply keeps the modmail open; chatter doesn't."""
     if config["modmail_closes"].pop(str(channel.id), None) is None:
         return
     save()
@@ -388,8 +433,54 @@ class ModmailCloseView(discord.ui.View):
         await _close_modmail(interaction.channel, user_id)
 
 
+async def _edit_last_reply(message: discord.Message, user_id: str, text: str) -> None:
+    """Rewrite the last moderator reply in the channel and in the user's DMs."""
+    if not text:
+        await message.channel.send("Usage: `&edit <new text>` — edits the last reply sent.")
+        return
+    last = config["modmail_last_reply"].get(str(message.channel.id))
+    if not last:
+        await message.channel.send("There's no recent reply to edit.")
+        return
+    embed = _reply_embed(last["moderator"], text)
+    edited_channel = False
+    try:
+        record = await message.channel.fetch_message(last["channel_message_id"])
+        await record.edit(embed=embed)
+        edited_channel = True
+    except discord.HTTPException:
+        pass
+    dm_message_id = last.get("dm_message_id")
+    edited_dm = False
+    if dm_message_id:
+        target = message.guild.get_member(int(user_id))
+        if target is None:
+            try:
+                target = await message.guild.fetch_member(int(user_id))
+            except discord.HTTPException:
+                target = None
+        if target is not None:
+            try:
+                dm = target.dm_channel or await target.create_dm()
+                dm_message = await dm.fetch_message(dm_message_id)
+                await dm_message.edit(embed=embed)
+                edited_dm = True
+            except discord.HTTPException:
+                pass
+    if not edited_channel and not edited_dm:
+        await message.channel.send("Couldn't edit the last reply — it may have been deleted.")
+    elif dm_message_id and not edited_dm:
+        await message.channel.send(
+            "Edited the channel copy, but couldn't update the user's DM."
+        )
+    try:
+        await message.delete()
+    except discord.HTTPException:
+        pass
+
+
 async def handle_staff(message: discord.Message) -> None:
-    """Handle `&reply`/`&r`, `&close [10m|1h]` and `&id` inside a modmail channel."""
+    """Handle `&reply`/`&r`, `&edit`, `&close [10m|1h]`, `&alert` and `&id` in a modmail."""
     user_id = next(
         (uid for uid, cid in config["modmails"].items() if cid == message.channel.id), None
     )
@@ -409,8 +500,6 @@ async def handle_staff(message: discord.Message) -> None:
         else:
             await schedule_close(message.channel, user_id, delay)
         return
-    # Any other message from staff keeps the conversation alive.
-    await cancel_scheduled_close(message.channel)
     if lower == "&alert":
         alerts = config["modmail_alerts"].setdefault(str(message.channel.id), [])
         if message.author.id in alerts:
@@ -427,6 +516,9 @@ async def handle_staff(message: discord.Message) -> None:
     if lower == "&id":
         await message.channel.send(f"User ID:\n```\n{user_id}\n```")
         return
+    if lower == "&edit" or lower.startswith("&edit "):
+        await _edit_last_reply(message, user_id, content[5:].strip())
+        return
     if lower.startswith("&reply "):
         reply = content[7:].strip()
     elif lower.startswith("&r "):
@@ -435,6 +527,9 @@ async def handle_staff(message: discord.Message) -> None:
         return
     if not reply:
         return
+    # Only an actual reply counts as activity — other staff chatter leaves the
+    # scheduled close in place.
+    await cancel_scheduled_close(message.channel)
     target = message.guild.get_member(int(user_id))
     if target is None:
         try:
@@ -443,13 +538,20 @@ async def handle_staff(message: discord.Message) -> None:
             target = None
     embed = _reply_embed(message.author.name, reply)
     delivered = False
+    dm_message = None
     if target is not None:
         try:
-            await target.send(embed=embed)
+            dm_message = await target.send(embed=embed)
             delivered = True
         except discord.HTTPException:
             pass
-    await message.channel.send(embed=embed)
+    record = await message.channel.send(embed=embed)
+    config["modmail_last_reply"][str(message.channel.id)] = {
+        "moderator": message.author.name,
+        "dm_message_id": dm_message.id if dm_message is not None else None,
+        "channel_message_id": record.id,
+    }
+    save()
     if not delivered:
         await message.channel.send(
             "Couldn't DM the user — they may have DMs closed or left the server."
@@ -534,6 +636,8 @@ async def _close_modmail(channel: discord.TextChannel, user_id: str) -> None:
     if config["modmail_closes"].pop(str(channel.id), None) is not None:
         save()
     if config["modmail_alerts"].pop(str(channel.id), None) is not None:
+        save()
+    if config["modmail_last_reply"].pop(str(channel.id), None) is not None:
         save()
     guild = channel.guild
     member = guild.get_member(int(user_id))
@@ -621,6 +725,7 @@ async def process_scheduled_closes(bot: discord.Client) -> None:
         if channel is None:
             config["modmail_closes"].pop(channel_id, None)
             config["modmail_alerts"].pop(channel_id, None)
+            config["modmail_last_reply"].pop(channel_id, None)
             if config["modmails"].get(user_id) == int(channel_id):
                 config["modmails"].pop(user_id, None)
             changed = True
