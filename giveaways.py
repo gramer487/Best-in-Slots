@@ -331,22 +331,49 @@ class GiveawayEntryView(discord.ui.View):
                 "Enter from inside the server.", ephemeral=True
             )
             return
+        entries = _entries(self.giveaway_id)
+        if interaction.user.id in entries:
+            # Already in — offer to leave, but only after an explicit confirmation.
+            await interaction.response.send_message(
+                "You're entered. Press **Leave giveaway** to give your slot back.",
+                view=GiveawayLeaveView(self.giveaway_id),
+                ephemeral=True,
+            )
+            return
         blacklist_id = config["giveaway_blacklist_role_id"]
         if blacklist_id and any(role.id == blacklist_id for role in interaction.user.roles):
             await interaction.response.send_message(
                 "You can't enter giveaways with your current roles.", ephemeral=True
             )
             return
-        entries = _entries(self.giveaway_id)
-        if interaction.user.id in entries:
-            await interaction.response.send_message(
-                "You're already entered.", ephemeral=True
-            )
-            return
         entries.add(interaction.user.id)
         _dirty.add(self.giveaway_id)
         await interaction.response.send_message(
             f"✅ You're entered — {len(entries)} entries so far.", ephemeral=True
+        )
+
+
+class GiveawayLeaveView(discord.ui.View):
+    """Ephemeral confirm shown when an entrant presses the Enter button again."""
+
+    def __init__(self, giveaway_id: str):
+        super().__init__(timeout=60)
+        self.giveaway_id = giveaway_id
+
+    @discord.ui.button(label="Leave giveaway", style=discord.ButtonStyle.danger, emoji="👋")
+    async def leave(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        giveaway = config["giveaways"].get(self.giveaway_id)
+        if giveaway is None or giveaway.get("status") != "active":
+            await interaction.response.edit_message(
+                content="This giveaway has ended.", view=None
+            )
+            return
+        entries = _entries(self.giveaway_id)
+        entries.discard(interaction.user.id)
+        _dirty.add(self.giveaway_id)
+        await interaction.response.edit_message(
+            content=f"You've left the giveaway — {len(entries)} entries so far.",
+            view=None,
         )
 
 
@@ -581,6 +608,7 @@ class GiveawaySetupView(permissions.AdminOnlyView):
             self.add_item(select)
         for label, style, callback in (
             ("Save setup", discord.ButtonStyle.green, self._save),
+            ("Clear ping role", discord.ButtonStyle.secondary, self._clear_ping),
             ("Blacklist role →", discord.ButtonStyle.secondary, self._blacklist),
             ("← Back", discord.ButtonStyle.grey, self._back),
         ):
@@ -597,32 +625,42 @@ class GiveawaySetupView(permissions.AdminOnlyView):
         pings = self.ping_select.values or self.ping_select.default_values
         managers = self.manager_select.values or self.manager_select.default_values
         logs = self.log_select.values or self.log_select.default_values
-        if not channels or not pings or not managers or not logs:
+        if not channels or not managers or not logs:
             await interaction.response.send_message(
-                "Pick a channel, a ping role, a manager role and a log channel first.",
+                "Pick a channel, a manager role and a log channel first.",
                 ephemeral=True,
             )
             return
         channel = self.guild.get_channel(channels[0].id)
-        ping = self.guild.get_role(pings[0].id)
+        ping = self.guild.get_role(pings[0].id) if pings else None
         manager = self.guild.get_role(managers[0].id)
         log = self.guild.get_channel(logs[0].id)
-        if channel is None or ping is None or manager is None or log is None:
+        if channel is None or manager is None or log is None or (pings and ping is None):
             await interaction.response.send_message(
                 "Something picked here no longer exists — pick it again.", ephemeral=True
             )
             return
         await interaction.response.defer()
         config["giveaway_channel_id"] = channel.id
-        config["giveaway_ping_role_id"] = ping.id
+        config["giveaway_ping_role_id"] = ping.id if ping is not None else None
         config["giveaway_manager_role_id"] = manager.id
         config["giveaway_log_channel_id"] = log.id
         save()
+        ping_text = f"New giveaways ping {ping.name}." if ping else "New giveaways ping no role."
         await interaction.edit_original_response(
             content=(
-                f"Saved. Giveaways post in {channel.mention}, ping {ping.name}, are "
-                f"managed by {manager.name} and are logged in {log.mention}."
+                f"Saved. Giveaways post in {channel.mention}. {ping_text} "
+                f"Managed by {manager.name}, logged in {log.mention}."
             ),
+            view=GiveawaySetupView(self.guild),
+        )
+
+    async def _clear_ping(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+        config["giveaway_ping_role_id"] = None
+        save()
+        await interaction.edit_original_response(
+            content="Cleared. New giveaways won't ping a role.",
             view=GiveawaySetupView(self.guild),
         )
 
@@ -684,8 +722,8 @@ class GiveawayBlacklistView(permissions.AdminOnlyView):
     async def _back(self, interaction: discord.Interaction) -> None:
         await interaction.response.edit_message(
             content=(
-                "**Giveaways setup** — pick the giveaway channel, ping role, manager "
-                "role and log channel, then **Save setup**."
+                "**Giveaways setup** — pick the giveaway channel, optional ping role, "
+                "manager role and log channel, then **Save setup**."
             ),
             view=GiveawaySetupView(self.guild),
         )

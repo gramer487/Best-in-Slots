@@ -91,18 +91,20 @@ and button press.
 
 ## Giveaways
 
-Administrators set the giveaway channel, log channel, ping role, manager role and
-optional blacklist role in `/setup` → **Giveaways**. Every creation is logged in the log
-channel with its title, host, value, winner count, end time, channel, who created it and a
-jump link, along with the giveaway's image.
+Administrators set the giveaway channel, log channel, an optional ping role, the manager
+role and an optional blacklist role in `/setup` → **Giveaways**; a ping role can be cleared
+again with **Clear ping role**. Every creation is logged in the log channel with its
+title, host, value, winner count, end time, channel, who created it and a jump link, along
+with the giveaway's image.
 
 `/giveaway create` takes a title, duration (`30s`, `30m`, `2h`, `7d`), winner count, host,
 and a value (`150` or `150p` — the `p` is normalized away), plus an optional image
 attachment and channel override. It posts a gold embed showing the title, host, winners,
 entries and end time (as a Discord timestamp, so it counts down live) with the attached
-image as the main embed image, an **Enter giveaway** button, and pings the setup role.
-Members with the blacklist role can't enter. Entry handling is built for bursts — hundreds
-of entries in a few seconds are fine.
+image as the main embed image, an **Enter giveaway** button, and pings the setup role when
+one is set. Pressing the button while entered asks for confirmation before leaving the
+giveaway. Members with the blacklist role can't enter. Entry handling is built for bursts
+— hundreds of entries in a few seconds are fine.
 
 When the duration runs out — or a manager presses **End now** in `/giveaway manage` — the
 embed turns red, lists the winners and DMs them, and the panel shows **Reroll winners** and

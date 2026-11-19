@@ -783,7 +783,7 @@ class SetupMenuView(AdminOnlyView):
     @discord.ui.button(label="Giveaways", style=discord.ButtonStyle.blurple, emoji="🎉", row=1)
     async def giveaways(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         await interaction.response.edit_message(
-            content="**Giveaway setup** — channel, ping role and the role that manages giveaways.",
+            content="**Giveaway setup** — channel, optional ping role and the role that manages giveaways.",
             view=GiveawaySetupView(interaction.guild),
         )
 
