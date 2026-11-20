@@ -156,7 +156,9 @@ their reviewer role, the voice hub, and giveaways — including the giveaway cha
 role, manager role, log channel and blacklist role. `/gwroles` configures the three
 giveaway host tiers, `/gwinfo` reviews a host's points, and `/giveaway manage` ends a
 running giveaway early. `/presence` changes what the bot is shown doing — playing,
-watching, listening or competing — live and across restarts.
+watching, listening or competing — live and across restarts. Members who display the
+server's tag are given a fixed role automatically, and it's taken back when the tag is
+removed.
 
 For roles to be handed out, the bot's own role must sit above them in the role hierarchy —
 this applies to self roles, the roles used by the voice hub, and the giveaway tiers.

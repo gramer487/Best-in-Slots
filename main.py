@@ -42,6 +42,7 @@ bot = commands.Bot(command_prefix=None, intents=intents)
 tags.register(bot)
 _status_task: asyncio.Task | None = None
 _lfg_panels_posted = False
+SERVER_TAG_ROLE_ID = 1573159476402462730  # given to members who display the server tag
 
 
 def get_token() -> str:
@@ -149,6 +150,8 @@ async def on_ready():
         check_modmail_closes.start()
     if not giveaway_tick.is_running():
         giveaway_tick.start()
+    if not server_tag_role.is_running():
+        server_tag_role.start()
     global _status_task
     if _status_task is None or _status_task.done():
         _status_task = bot.loop.create_task(status_task())
@@ -216,6 +219,33 @@ async def check_modmail_closes():
 async def giveaway_tick():
     """Batch giveaway entries, refresh their counts and end giveaways when due."""
     await giveaways.tick(bot)
+
+
+@tasks.loop(minutes=5)
+async def server_tag_role():
+    """Keep the server-tag role on members displaying the tag and off everyone else."""
+    guild = bot.get_guild(config["guild_id"]) if config["guild_id"] else None
+    if guild is None:
+        return
+    role = guild.get_role(SERVER_TAG_ROLE_ID)
+    if role is None:
+        return
+    for member in guild.members:
+        if member.bot:
+            continue
+        tagged = (
+            member.primary_guild.id == guild.id
+            and member.primary_guild.identity_enabled is True
+        )
+        if tagged == (role in member.roles):
+            continue
+        try:
+            if tagged:
+                await member.add_roles(role, reason="Displays the server tag")
+            else:
+                await member.remove_roles(role, reason="No longer displays the server tag")
+        except discord.HTTPException:
+            pass
 
 
 async def status_task():
