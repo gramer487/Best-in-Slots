@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import io
 import random
@@ -26,6 +27,10 @@ _VALUE_RE = re.compile(r"^(\d+)\s*p?$")
 # hundreds of entries in a burst without a config write or embed edit per click.
 _entry_cache: dict[str, set[int]] = {}
 _dirty: set[str] = set()
+
+# Discord allows five message edits per five seconds per channel. Giveaways often
+# share one channel, so space the tick's embed edits out rather than eating 429s.
+_EDIT_SPACING = 1.1
 
 
 # --------------------------------------------------------------------------- helpers
@@ -287,8 +292,23 @@ async def tick(bot: discord.Client) -> None:
     """Persist new entries, refresh their counts and end giveaways that are due."""
     now = dt.datetime.now(dt.timezone.utc)
     changed = False
+    last_edit: dict[int, float] = {}
+
+    async def pace(channel_id: int) -> None:
+        # Several giveaways can be dirty in the same channel in one tick; keep
+        # consecutive edits there at least _EDIT_SPACING apart.
+        loop = asyncio.get_running_loop()
+        last = last_edit.get(channel_id)
+        if last is not None:
+            wait = _EDIT_SPACING - (loop.time() - last)
+            if wait > 0:
+                await asyncio.sleep(wait)
+        last_edit[channel_id] = loop.time()
+
     for giveaway_id, giveaway in list(config["giveaways"].items()):
         if giveaway.get("status") == "active" and _is_due(giveaway, now):
+            if giveaway.get("channel_id") and giveaway.get("message_id"):
+                await pace(giveaway["channel_id"])
             await end_giveaway(bot, giveaway_id, giveaway)
             changed = True
             continue
@@ -296,6 +316,8 @@ async def tick(bot: discord.Client) -> None:
             giveaway["entries"] = sorted(_entries(giveaway_id))
             _dirty.discard(giveaway_id)
             changed = True
+            if giveaway.get("channel_id") and giveaway.get("message_id"):
+                await pace(giveaway["channel_id"])
             await _edit_embed(bot, giveaway)
     if changed:
         save()
